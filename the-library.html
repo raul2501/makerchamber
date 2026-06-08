@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Library — Level 6: Feed-Forward Network</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Fraunces:opsz,wght@9..144,300;9..144,600&family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #2C2C2C; color: #FFFFFF; font-family: 'Inter', sans-serif; min-height: 100vh; display: flex; align-items: center; flex-direction: column; padding: 24px 16px; }
+.screen { display: none; width: 100%; max-width: 860px; }
+.screen.active { display: block; }
+.eyebrow { font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: 2px; text-transform: uppercase; color: #CCCCCC; margin-bottom: 18px; line-height: 2; }
+.big-title { font-family: 'Fraunces', serif; font-size: 56px; font-weight: 300; color: #FFC107; line-height: 1; }
+.divider { width: 100%; height: 2px; background: repeating-linear-gradient(90deg, #4A4A4A 0px, #4A4A4A 8px, transparent 8px, transparent 12px); margin: 20px 0; border: none; }
+.section-label { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: 1px; text-transform: uppercase; color: #AAAAAA; margin-bottom: 10px; line-height: 2; }
+.card { background: #5D5D5D; border-top: 3px solid #9A9A9A; border-left: 3px solid #9A9A9A; border-bottom: 3px solid #1A1A1A; border-right: 3px solid #1A1A1A; border-radius: 0; padding: 16px 20px; box-shadow: inset 2px 2px 0 #7A7A7A, inset -2px -2px 0 #1A1A1A; }
+.insight-card { background: #1E3D1E; border-top: 3px solid #4A8A4A; border-left: 3px solid #4A8A4A; border-bottom: 3px solid #0A1A0A; border-right: 3px solid #0A1A0A; border-radius: 0; padding: 14px 18px; box-shadow: inset 1px 1px 0 #3A6A2A; }
+.insight-label { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: 1px; text-transform: uppercase; color: #80C840; margin-bottom: 8px; line-height: 2; }
+.insight-text { font-size: 13px; color: #80FF20; line-height: 1.6; }
+.btn-primary { display: inline-block; padding: 13px 26px; background: #5D8733; color: #FFFFFF; border: none; border-bottom: 4px solid #2A5A18; border-right: 4px solid #2A5A18; border-top: 4px solid #8DB360; border-left: 4px solid #8DB360; font-family: 'Press Start 2P', monospace; font-size: 9px; font-weight: 400; cursor: pointer; border-radius: 0; transition: none; letter-spacing: 0.5px; }
+.btn-primary:hover { background: #6B9E38; transform: none; } .btn-primary:active { border-top-color: #2A5A18; border-left-color: #2A5A18; border-bottom-color: #8DB360; border-right-color: #8DB360; }
+.btn-primary:disabled { background: #3A3A3A; color: #666666; cursor: not-allowed; border-color: #2A2A2A; border-radius: 0; }
+.btn-ghost { display: inline-block; padding: 12px 22px; background: #4A4A4A; color: #CCCCCC; border: 2px solid #555555; font-family: 'Press Start 2P', monospace; font-size: 8px; cursor: pointer; border-radius: 0; transition: all 0.15s; letter-spacing: 0.5px; }
+.btn-ghost:hover { border-color: #FFC107; color: #FFC107; background: #6A6A6A; }
+.intro-wrap { padding: 48px 0; text-align: center; }
+.intro-body { max-width: 520px; margin: 0 auto 16px; color: #DDDDDD; font-size: 15px; line-height: 1.85; }
+.intro-nav { display: flex; justify-content: center; gap: 12px; margin-top: 36px; }
+.game-wrap { padding: 16px 0 40px; }
+.game-header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 16px; border-bottom: 2px solid #3A3A3A; margin-bottom: 24px; }
+.game-logo { font-family: 'Press Start 2P', monospace; font-size: 10px; color: #FFC107; letter-spacing: 1px; }
+.progress-dots { display: flex; gap: 2px; background: #0A1600; border: 2px solid #1A3300; border-radius: 0; padding: 3px; }
+.dot { width: 22px; height: 10px; border-radius: 0; border: none; background: #142800; transition: background 0.2s; }
+.dot.done { background: #80FF20; box-shadow: inset 0 1px 0 rgba(255,255,255,0.3); }
+.dot.current { background: #3A8800; box-shadow: inset 0 1px 0 rgba(255,255,255,0.15); }
+.context-note { font-size: 13px; color: #CCCCCC; font-style: italic; padding-left: 12px; border-left: 3px solid #5D8733; margin-bottom: 18px; line-height: 1.65; }
+.closing-links { display: flex; gap: 12px; justify-content: center; margin-top: 32px; }
+
+/* State display */
+.state-box { background: #5D5D5D; border: 1px solid #3A3A3A; border-radius: 0; padding: 14px 18px; margin-bottom: 18px; }
+.state-lbl { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #CCCCCC; margin-bottom: 6px; }
+.state-tag { display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 12px; margin: 2px; }
+.state-tag.nature { background: #1E3D1E; border: 1px solid #2A4A2A; color: #5D8733; }
+.state-tag.finance { background: #2A1A1A; border: 1px solid #6A2A2A; color: #d44a4a; }
+.state-tag.neutral { background: #4A4A4A; border: 1px solid #555555; color: #DDDDDD; }
+
+/* Fact cards */
+.facts-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+.fact-card {
+  border-radius: 0; padding: 12px 14px; cursor: pointer;
+  transition: all 0.2s; border: 2px solid transparent; position: relative;
+}
+.fact-card.nature-card { background: #1E3D1E; border-color: #1e3010; }
+.fact-card.finance-card { background: #2A1A1A; border-color: #501a1a; }
+.fact-card.neutral-card { background: #5D5D5D; border-color: #2a1f10; }
+.fact-card.selected { border-color: #FFC107; box-shadow: 0 0 12px rgba(201,148,61,0.2); }
+.fact-card.revealed-on { animation: pulseOn 0.5s ease; }
+.fact-card.revealed-off { opacity: 0.4; }
+.fact-icon { font-size: 20px; margin-bottom: 6px; }
+.fact-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.fact-card.nature-card .fact-title { color: #5D8733; }
+.fact-card.finance-card .fact-title { color: #d44a4a; }
+.fact-card.neutral-card .fact-title { color: #DDDDDD; }
+.fact-body { font-size: 11px; color: #BBBBBB; line-height: 1.4; }
+.fact-strength { display: none; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; margin-top: 6px; }
+.act-bar-wrap { height: 4px; background: rgba(0,0,0,0.4); border-radius: 2px; margin-top: 4px; display: none; }
+.act-bar { height: 100%; border-radius: 2px; transition: width 0.6s ease; width: 0; }
+
+.select-count { font-size: 12px; color: #CCCCCC; margin-bottom: 14px; }
+
+@keyframes pulseOn { 0%{transform:scale(1)} 50%{transform:scale(1.04)} 100%{transform:scale(1)} }
+
+/* Expansion visual */
+.expand-visual { display: flex; align-items: center; gap: 12px; padding: 20px; background: #5D5D5D; border: 1px solid #3A3A3A; border-radius: 0; margin-bottom: 20px; }
+.expand-box { border-radius: 0; padding: 12px; text-align: center; transition: all 0.7s ease; }
+.expand-arrow { font-size: 20px; color: #CCCCCC; flex-shrink: 0; }
+.expand-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px; }
+.expand-dim { font-family: 'JetBrains Mono', monospace; font-size: 18px; color: #FFC107; }
+.expand-note { font-size: 11px; color: #BBBBBB; margin-top: 4px; }
+
+/* Minecraft hotbar */
+.mc-hotbar {
+  display: flex; gap: 4px; justify-content: center;
+  padding: 20px 0 4px;
+}
+.mc-hotbar-slot {
+  width: 50px; height: 50px;
+  background: #8B8B8B;
+  border-top: 3px solid #C6C6C6; border-left: 3px solid #C6C6C6;
+  border-bottom: 3px solid #373737; border-right: 3px solid #373737;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-decoration: none; cursor: pointer; position: relative;
+  transition: none;
+}
+.mc-hotbar-slot.current {
+  background: #9A9A9A;
+  border-top-color: #FFFFFF; border-left-color: #FFFFFF;
+  border-bottom-color: #FFFFFF; border-right-color: #FFFFFF;
+  box-shadow: 0 0 0 2px #FFC107;
+}
+.mc-hotbar-slot.future {
+  background: #5A5A5A;
+  border-top-color: #8A8A8A; border-left-color: #8A8A8A;
+  border-bottom-color: #1A1A1A; border-right-color: #1A1A1A;
+  opacity: 0.6;
+}
+.mc-hotbar-num {
+  font-family: 'Press Start 2P', monospace; font-size: 7px;
+  color: #FFFFFF; text-shadow: 1px 1px #000;
+  position: absolute; top: 3px; right: 5px;
+}
+.mc-hotbar-label {
+  font-family: 'Press Start 2P', monospace; font-size: 5px;
+  color: #FFFFFF; text-shadow: 1px 1px #000;
+  margin-top: 2px; text-align: center; line-height: 1.4;
+  padding: 0 2px;
+}
+.mc-hotbar-slot.current .mc-hotbar-label { color: #FFC107; }
+
+</style>
+</head>
+<body>
+
+<!-- INTRO -->
+<div id="intro" class="screen active">
+  <div class="intro-wrap">
+    <p class="eyebrow">Level 06 / Feed-Forward Network</p>
+    <h1 class="big-title">The Library</h1>
+    <div class="divider"></div>
+    <p class="intro-body">After the square, travelers walk away alone. The talking is done.</p>
+    <p class="intro-body">The Library holds everything the City ever learned — facts, associations, world knowledge. What it pulls for you depends on who you are now, post-attention. A different traveler walks away with different knowledge.</p>
+    <p class="intro-body" style="font-size:13px;color:#5a4a35;">The square found what matters in this sentence. The Library finds what you know about it.</p>
+    <div class="intro-nav">
+      <button class="btn-primary" onclick="show('round1');initR1()">Enter the Library →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ROUND 1: Nature bank -->
+<div id="round1" class="screen">
+  <div class="game-wrap">
+    <div class="game-header">
+      <div class="game-logo">The Library</div>
+      <div class="progress-dots">
+        <div class="dot current"></div><div class="dot"></div><div class="dot"></div>
+      </div>
+      <div style="font-size:12px;color:#4a3a28;">Round 1 of 3</div>
+    </div>
+
+    <h3 style="font-family:'Fraunces',serif;font-size:22px;font-weight:300;color:#FFC107;margin-bottom:8px;">Which books pull off the shelves?</h3>
+    <div class="context-note">bank arrives at the Library carrying context from the town square — it attended to flood, eroded, muddy, shore. Below are the Library's shelves. Select the fact cards you think will activate given bank's current state. Then reveal which ones actually fire.</div>
+
+    <div class="state-box">
+      <div class="state-lbl">bank — current state (post-attention)</div>
+      <span class="state-tag nature">flood context</span>
+      <span class="state-tag nature">erosion signal</span>
+      <span class="state-tag nature">waterside location</span>
+      <span class="state-tag nature">earthen environment</span>
+      <span class="state-tag neutral">noun, subject</span>
+      <span class="state-tag neutral">slot 6</span>
+    </div>
+
+    <div class="select-count" id="r1selCount">Select cards you think will activate (pick any)</div>
+    <div class="facts-grid" id="r1grid"></div>
+
+    <div style="text-align:center;">
+      <button class="btn-primary" id="r1revealBtn" onclick="revealR1()" disabled>Reveal what fires →</button>
+    </div>
+
+    <div id="r1result" style="display:none;margin-top:18px;">
+      <div class="insight-card" style="margin-bottom:14px;">
+        <div class="insight-label">What activated</div>
+        <div class="insight-text" id="r1insightText"></div>
+      </div>
+      <div style="text-align:center;">
+        <button class="btn-primary" onclick="show('round2');initR2()">Same Library, different bank →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ROUND 2: Finance bank -->
+<div id="round2" class="screen">
+  <div class="game-wrap">
+    <div class="game-header">
+      <div class="game-logo">The Library</div>
+      <div class="progress-dots">
+        <div class="dot done"></div><div class="dot current"></div><div class="dot"></div>
+      </div>
+      <div style="font-size:12px;color:#4a3a28;">Round 2 of 3</div>
+    </div>
+
+    <h3 style="font-family:'Fraunces',serif;font-size:22px;font-weight:300;color:#FFC107;margin-bottom:8px;">Same Library — different context</h3>
+    <div class="context-note">Now bank arrives having attended to a completely different sentence: "The bank approved my loan application." It attended to loan, approved, application. Same token, same Library — but attention changed what it's carrying when it walks in.</div>
+
+    <div class="state-box">
+      <div class="state-lbl">bank — current state (post-attention, financial context)</div>
+      <span class="state-tag finance">loan context</span>
+      <span class="state-tag finance">approval process</span>
+      <span class="state-tag finance">application / formal request</span>
+      <span class="state-tag finance">institution acting</span>
+      <span class="state-tag neutral">noun, subject</span>
+    </div>
+
+    <div class="select-count">Select which cards you think activate now</div>
+    <div class="facts-grid" id="r2grid"></div>
+
+    <div style="text-align:center;margin-top:4px;">
+      <button class="btn-primary" id="r2revealBtn" onclick="revealR2()" disabled>Reveal →</button>
+    </div>
+
+    <div id="r2result" style="display:none;margin-top:18px;">
+      <div class="insight-card" style="margin-bottom:14px;">
+        <div class="insight-label">Attention routes you to the right part of the Library</div>
+        <div class="insight-text">Same token. Same Library. Different attention history → different facts retrieved. This is how attention and FFN divide the work: attention decides which context you're in, FFN looks up what you know about things in that context. The Library doesn't interpret — it pattern-matches. What pattern you carry when you arrive determines everything.</div>
+      </div>
+      <div style="text-align:center;">
+        <button class="btn-primary" onclick="show('round3')">The expansion →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ROUND 3: Expansion -->
+<div id="round3" class="screen">
+  <div class="game-wrap">
+    <div class="game-header">
+      <div class="game-logo">The Library</div>
+      <div class="progress-dots">
+        <div class="dot done"></div><div class="dot done"></div><div class="dot current"></div>
+      </div>
+      <div style="font-size:12px;color:#4a3a28;">Round 3 of 3</div>
+    </div>
+
+    <h3 style="font-family:'Fraunces',serif;font-size:22px;font-weight:300;color:#FFC107;margin-bottom:8px;">The Library is four times bigger on the inside</h3>
+    <p style="font-size:13px;color:#6a5840;line-height:1.7;margin-bottom:20px;">The FFN has a two-layer structure: input → expand 4× → ReLU → contract back. You enter your 4096-dimensional self. Inside, you briefly exist across 16,384 dimensions — the full catalog of possible patterns — then collapse back, having filtered and absorbed only what was relevant.</p>
+
+    <div id="expandVisual">
+      <div class="expand-visual">
+        <div class="expand-box" style="background:#1a1408;border:1px solid #3a2a18;flex:1;">
+          <div class="expand-label" style="color:#FFC107;">You enter</div>
+          <div class="expand-dim">4,096</div>
+          <div class="expand-note">dimensions — bank's current representation</div>
+        </div>
+        <div class="expand-arrow">→</div>
+        <div class="expand-box" id="innerBox" style="background:#0a0d18;border:1px solid #1a3060;flex:2;transition:all 0.8s ease;">
+          <div class="expand-label" style="color:#4a7fd4;">Inside the Library</div>
+          <div class="expand-dim" id="innerDim" style="color:#4a7fd4;">16,384</div>
+          <div class="expand-note" id="innerNote">every possible pattern is checked simultaneously</div>
+        </div>
+        <div class="expand-arrow">→</div>
+        <div class="expand-box" style="background:#0a1404;border:1px solid #1e3010;flex:1;">
+          <div class="expand-label" style="color:#6a9030;">You leave</div>
+          <div class="expand-dim" style="color:#6a9030;">4,096</div>
+          <div class="expand-note">same size — but carrying retrieved knowledge</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:18px;">
+        <div class="section-label" style="margin-bottom:10px;">What ReLU does in the middle</div>
+        <p style="font-size:13px;color:#8a7460;line-height:1.7;">The expansion layer produces 16,384 raw scores — one per pattern in the catalog. ReLU (max(0, x)) sets all negative scores to zero. Only positive matches survive. This gating is how the Library "selects" — irrelevant patterns are zeroed out, relevant ones pass through. The second layer then reads the surviving activations and writes the retrieved knowledge back into bank's 4,096-dimensional representation.</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:18px;">
+      <div class="section-label" style="margin-bottom:10px;">What the Library is storing</div>
+      <p style="font-size:13px;color:#8a7460;line-height:1.7;margin-bottom:10px;">Research (Geva et al., 2021) suggests the FFN stores factual associations as key-value pairs in its weights. The first layer matches patterns (keys), the second reads out payloads (values). Examples of what this looks like in practice:</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div style="padding:10px;background:#0a1404;border:1px solid #1e3010;border-radius:6px;font-size:12px;color:#6a8050;">Pattern: "Rome is the capital of ___" → fires Italy, Europe, ancient, Vatican</div>
+        <div style="padding:10px;background:#0a1404;border:1px solid #1e3010;border-radius:6px;font-size:12px;color:#6a8050;">Pattern: "riverbank" context → fires erosion, sediment, flood plain, alluvial</div>
+        <div style="padding:10px;background:#0a1404;border:1px solid #1e3010;border-radius:6px;font-size:12px;color:#6a8050;">Pattern: "financial institution" → fires deposit, loan, FDIC, interest, vault</div>
+        <div style="padding:10px;background:#0a1404;border:1px solid #1e3010;border-radius:6px;font-size:12px;color:#6a8050;">Pattern: "___'s capital city" → fires geography facts, national information</div>
+      </div>
+    </div>
+
+    <div class="insight-card">
+      <div class="insight-label">Attention vs FFN — the division of labor</div>
+      <div class="insight-text">Attention is dynamic: computed fresh every time, based on what tokens appear together in the current input. FFN is parametric: fixed in the weights, baked in during training. Attention says "what's relevant in this specific sentence." FFN says "what do I know about things like this." Together they form the two-stage processing that makes transformers powerful: route first, retrieve second.</div>
+    </div>
+
+    <div style="text-align:center;margin-top:24px;">
+      <button class="btn-primary" onclick="show('closing')">Continue →</button>
+    </div>
+  </div>
+</div>
+
+<!-- CLOSING -->
+<div id="closing" class="screen">
+  <div class="intro-wrap">
+    <p class="eyebrow">Level 06 — Complete</p>
+    <h1 class="big-title">Retrieved</h1>
+    <div class="divider"></div>
+    <div class="card" style="max-width:560px;margin:0 auto 16px;text-align:left;">
+      <div class="section-label" style="margin-bottom:10px;">What the FFN does</div>
+      <p style="font-size:14px;color:#8a7460;line-height:1.75;margin-bottom:10px;">After attention, each token goes alone to the FFN — a two-layer network that matches its current representation against learned patterns and reads out stored knowledge. The expansion-contraction structure (4×) gives it a vast internal space to check patterns against before collapsing back to the working dimension.</p>
+      <p style="font-size:14px;color:#8a7460;line-height:1.75;">What fires depends entirely on what attention left behind. Attention routes; FFN retrieves.</p>
+    </div>
+    <div class="insight-card" style="max-width:560px;margin:0 auto 20px;text-align:left;">
+      <div class="insight-label">What comes next</div>
+      <div class="insight-text">One complete layer is: attention → residual → FFN → residual. Then it repeats — across every floor of the Tower. Each floor refines the representation further, from surface grammar to deep abstract meaning. Level 7: The Tower.</div>
+    </div>
+    <div class="closing-links">
+      <button class="btn-ghost" onclick="show('intro')">← Replay</button>
+      <a href="the-tower.html"><button class="btn-primary">The Tower →</button></a>
+    </div>
+  </div>
+</div>
+
+<script>
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+const FACTS_NATURE = [
+  { type:'nature', icon:'🌊', title:'Riverbanks erode', body:'The sloping earthen sides of a river gradually wear away under water pressure and flooding.', strength:0.92 },
+  { type:'nature', icon:'🌿', title:'Alluvial deposits', body:'Sediment carried by floodwater settles along the bank, forming rich soil layers.', strength:0.85 },
+  { type:'nature', icon:'💧', title:'Flood plains', body:'Areas adjacent to riverbanks that periodically flood, shaped by repeated inundation.', strength:0.88 },
+  { type:'nature', icon:'🪨', title:'Silt and sediment', body:'Fine particles suspended in floodwater gradually accumulate along the bank edge.', strength:0.78 },
+];
+const FACTS_FINANCE = [
+  { type:'finance', icon:'🏦', title:'Banks hold deposits', body:'Financial institutions accept and safeguard money from customers, paying interest.', strength:0.08 },
+  { type:'finance', icon:'💳', title:'Credit and loans', body:'Banks lend money to borrowers and charge interest over the repayment period.', strength:0.06 },
+  { type:'finance', icon:'📈', title:'Reserve requirements', body:'Central bank regulations mandate how much capital financial institutions must hold.', strength:0.04 },
+  { type:'finance', icon:'🔒', title:'Vault and security', body:'Banks physically secure cash and valuables in reinforced vaults.', strength:0.05 },
+];
+const FACTS_NEUTRAL = [
+  { type:'neutral', icon:'📍', title:'Banks have edges', body:'A bank is a sloped or raised edge — either of a body of water or a financial boundary.', strength:0.45 },
+  { type:'neutral', icon:'🏗️', title:'Structural boundary', body:'"Bank" as a concept marks a boundary or threshold between two states.', strength:0.30 },
+];
+
+const ALL_FACTS = [...FACTS_NATURE, ...FACTS_FINANCE, ...FACTS_NEUTRAL];
+const ALL_FACTS_SHUFFLED = [...FACTS_NATURE, ...FACTS_FINANCE, ...FACTS_NEUTRAL].sort(() => Math.random()-0.5);
+
+let r1selected = new Set();
+let r2selected = new Set();
+
+function initR1() {
+  r1selected = new Set();
+  document.getElementById('r1result').style.display = 'none';
+  document.getElementById('r1revealBtn').disabled = true;
+  renderFactGrid('r1grid', ALL_FACTS_SHUFFLED, r1selected, 'r1revealBtn', 'r1selCount');
+}
+
+function initR2() {
+  r2selected = new Set();
+  document.getElementById('r2result').style.display = 'none';
+  document.getElementById('r2revealBtn').disabled = true;
+  renderFactGrid('r2grid', ALL_FACTS_SHUFFLED, r2selected, 'r2revealBtn', null);
+}
+
+function renderFactGrid(gridId, facts, selected, btnId, countId) {
+  const grid = document.getElementById(gridId);
+  grid.innerHTML = '';
+  facts.forEach((f, i) => {
+    const card = document.createElement('div');
+    card.className = `fact-card ${f.type}-card`;
+    card.id = gridId + '-card-' + i;
+    card.innerHTML = `
+      <div class="fact-icon">${f.icon}</div>
+      <div class="fact-title">${f.title}</div>
+      <div class="fact-body">${f.body}</div>
+      <div class="fact-strength" id="${gridId}-str-${i}"></div>
+      <div class="act-bar-wrap" id="${gridId}-bar-wrap-${i}"><div class="act-bar" id="${gridId}-bar-${i}"></div></div>`;
+    card.onclick = () => {
+      if (selected.has(i)) { selected.delete(i); card.classList.remove('selected'); }
+      else { selected.add(i); card.classList.add('selected'); }
+      if (btnId) document.getElementById(btnId).disabled = selected.size === 0;
+      if (countId) document.getElementById(countId).textContent = selected.size > 0 ? selected.size + ' card(s) selected' : 'Select cards you think will activate (pick any)';
+    };
+    grid.appendChild(card);
+  });
+}
+
+function revealR1() {
+  // Nature facts activate, finance doesn't, neutral partially
+  ALL_FACTS_SHUFFLED.forEach((f, i) => {
+    const card = document.getElementById('r1grid-card-' + i);
+    const shouldActivate = f.type === 'nature' || (f.type === 'neutral' && f.strength > 0.4);
+    if (shouldActivate) {
+      card.classList.add('revealed-on');
+      card.classList.remove('revealed-off');
+    } else {
+      card.classList.add('revealed-off');
+    }
+    card.classList.remove('selected');
+
+    // Show activation bar
+    const barWrap = document.getElementById('r1grid-bar-wrap-' + i);
+    const bar = document.getElementById('r1grid-bar-' + i);
+    const str = document.getElementById('r1grid-str-' + i);
+    barWrap.style.display = 'block';
+    str.style.display = 'block';
+    str.textContent = 'Activation: ' + Math.round(f.strength * 100) + '%';
+    str.style.color = shouldActivate ? (f.type === 'nature' ? '#6a9030' : '#8a7460') : '#c04040';
+    setTimeout(() => {
+      bar.style.width = (f.strength * 100) + '%';
+      bar.style.background = f.type === 'nature' ? '#6a9030' : f.type === 'finance' ? '#c04040' : '#8a7460';
+    }, 80);
+  });
+
+  document.getElementById('r1revealBtn').disabled = true;
+  document.getElementById('r1result').style.display = 'block';
+  document.getElementById('r1insightText').textContent = 'The nature-domain facts fired strongly — riverbank erosion, alluvial deposits, flood plains, sediment. The finance-domain facts were nearly silent. This is because bank arrived carrying nature signals from the town square. The Library matched those patterns and retrieved geophysical knowledge, not financial knowledge. Same Library. Different arrival state.';
+  setTimeout(() => document.getElementById('r1result').scrollIntoView({behavior:'smooth',block:'nearest'}), 100);
+}
+
+function revealR2() {
+  // Finance facts activate this time
+  ALL_FACTS_SHUFFLED.forEach((f, i) => {
+    const card = document.getElementById('r2grid-card-' + i);
+    const finStrength = f.type === 'finance' ? 1 - f.strength + 0.8 : (f.type === 'nature' ? 0.08 : 0.35); // invert for finance context
+    const realStrength = f.type === 'finance' ? (1.0 - f.strength + 0.75) : f.strength;
+    const shouldActivate = f.type === 'finance';
+    if (shouldActivate) { card.classList.add('revealed-on'); card.classList.remove('revealed-off'); }
+    else { card.classList.add('revealed-off'); }
+    card.classList.remove('selected');
+
+    const barWrap = document.getElementById('r2grid-bar-wrap-' + i);
+    const bar = document.getElementById('r2grid-bar-' + i);
+    const str = document.getElementById('r2grid-str-' + i);
+    barWrap.style.display = 'block';
+    str.style.display = 'block';
+
+    const displayStr = f.type === 'finance' ? Math.round((1.0 - f.strength + 0.78) * 100) : Math.round(f.strength * 20);
+    str.textContent = 'Activation: ' + displayStr + '%';
+    str.style.color = shouldActivate ? '#d44a4a' : '#4a3a28';
+    setTimeout(() => {
+      bar.style.width = displayStr + '%';
+      bar.style.background = f.type === 'finance' ? '#d44a4a' : '#3a2a18';
+    }, 80);
+  });
+
+  document.getElementById('r2revealBtn').disabled = true;
+  document.getElementById('r2result').style.display = 'block';
+  setTimeout(() => document.getElementById('r2result').scrollIntoView({behavior:'smooth',block:'nearest'}), 100);
+}
+</script>
+  <div class="mc-hotbar">
+    <a href="the-gate.html" class="mc-hotbar-slot">
+      <div class="mc-hotbar-num">1</div>
+      <div class="mc-hotbar-label">Gate</div>
+    </a>
+    <a href="the-map-room.html" class="mc-hotbar-slot">
+      <div class="mc-hotbar-num">2</div>
+      <div class="mc-hotbar-label">Map</div>
+    </a>
+    <a href="the-census-bureau.html" class="mc-hotbar-slot">
+      <div class="mc-hotbar-num">3</div>
+      <div class="mc-hotbar-label">Bureau</div>
+    </a>
+    <a href="the-town-square.html" class="mc-hotbar-slot">
+      <div class="mc-hotbar-num">4</div>
+      <div class="mc-hotbar-label">Square</div>
+    </a>
+    <a href="the-thread.html" class="mc-hotbar-slot">
+      <div class="mc-hotbar-num">5</div>
+      <div class="mc-hotbar-label">Thread</div>
+    </a>
+    <a href="javascript:void(0)" class="mc-hotbar-slot current">
+      <div class="mc-hotbar-num">6</div>
+      <div class="mc-hotbar-label">Library</div>
+    </a>
+    <a href="the-tower.html" class="mc-hotbar-slot future">
+      <div class="mc-hotbar-num">7</div>
+      <div class="mc-hotbar-label">Tower</div>
+    </a>
+    <a href="the-oracle.html" class="mc-hotbar-slot future">
+      <div class="mc-hotbar-num">8</div>
+      <div class="mc-hotbar-label">Oracle</div>
+    </a>
+  </div>
+</body>
+</html>

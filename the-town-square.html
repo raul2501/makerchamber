@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Town Square — Level 4: Self-Attention</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Fraunces:opsz,wght@9..144,300;9..144,600&family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #2C2C2C; color: #FFFFFF; font-family: 'Inter', sans-serif; min-height: 100vh; display: flex; align-items: center; flex-direction: column; padding: 24px 16px; }
+.screen { display: none; width: 100%; max-width: 860px; }
+.screen.active { display: block; }
+.eyebrow { font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: 2px; text-transform: uppercase; color: #CCCCCC; margin-bottom: 18px; line-height: 2; }
+.big-title { font-family: 'Fraunces', serif; font-size: 56px; font-weight: 300; color: #FFC107; line-height: 1; }
+.divider { width: 100%; height: 2px; background: repeating-linear-gradient(90deg, #4A4A4A 0px, #4A4A4A 8px, transparent 8px, transparent 12px); margin: 20px 0; border: none; }
+.section-label { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: 1px; text-transform: uppercase; color: #AAAAAA; margin-bottom: 10px; line-height: 2; }
+.card { background: #5D5D5D; border-top: 3px solid #9A9A9A; border-left: 3px solid #9A9A9A; border-bottom: 3px solid #1A1A1A; border-right: 3px solid #1A1A1A; border-radius: 0; padding: 16px 20px; box-shadow: inset 2px 2px 0 #7A7A7A, inset -2px -2px 0 #1A1A1A; }
+.insight-card { background: #1E3D1E; border-top: 3px solid #4A8A4A; border-left: 3px solid #4A8A4A; border-bottom: 3px solid #0A1A0A; border-right: 3px solid #0A1A0A; border-radius: 0; padding: 14px 18px; box-shadow: inset 1px 1px 0 #3A6A2A; }
+.insight-label { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: 1px; text-transform: uppercase; color: #80C840; margin-bottom: 8px; line-height: 2; }
+.insight-text { font-size: 13px; color: #80FF20; line-height: 1.6; }
+.btn-primary { display: inline-block; padding: 13px 26px; background: #5D8733; color: #FFFFFF; border: none; border-bottom: 4px solid #2A5A18; border-right: 4px solid #2A5A18; border-top: 4px solid #8DB360; border-left: 4px solid #8DB360; font-family: 'Press Start 2P', monospace; font-size: 9px; font-weight: 400; cursor: pointer; border-radius: 0; transition: none; letter-spacing: 0.5px; }
+.btn-primary:hover { background: #6B9E38; transform: none; } .btn-primary:active { border-top-color: #2A5A18; border-left-color: #2A5A18; border-bottom-color: #8DB360; border-right-color: #8DB360; }
+.btn-primary:disabled { background: #3A3A3A; color: #666666; cursor: not-allowed; border-color: #2A2A2A; border-radius: 0; }
+.btn-ghost { display: inline-block; padding: 12px 22px; background: #4A4A4A; color: #CCCCCC; border: 2px solid #555555; font-family: 'Press Start 2P', monospace; font-size: 8px; cursor: pointer; border-radius: 0; transition: all 0.15s; letter-spacing: 0.5px; }
+.btn-ghost:hover { border-color: #FFC107; color: #FFC107; background: #6A6A6A; }
+
+/* Intro */
+.intro-wrap { padding: 48px 0; text-align: center; }
+.intro-body { max-width: 520px; margin: 0 auto 16px; color: #DDDDDD; font-size: 15px; line-height: 1.85; }
+.intro-nav { display: flex; justify-content: center; gap: 12px; margin-top: 36px; }
+.qkv-row { display: flex; gap: 12px; max-width: 600px; margin: 24px auto 0; }
+.qkv-card { flex: 1; padding: 16px; border-radius: 0; text-align: left; }
+.qkv-card.q { background: #1A1A2A; border: 1px solid #2A3A6A; }
+.qkv-card.k { background: #2A1A1A; border: 1px solid #6A2A2A; }
+.qkv-card.v { background: #1E3D1E; border: 1px solid #2A4A2A; }
+.qkv-letter { font-family: 'Fraunces', serif; font-size: 30px; font-weight: 600; margin-bottom: 4px; }
+.qkv-card.q .qkv-letter { color: #4a7fd4; }
+.qkv-card.k .qkv-letter { color: #d44a4a; }
+.qkv-card.v .qkv-letter { color: #5D8733; }
+.qkv-name { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #CCCCCC; margin-bottom: 8px; }
+.qkv-desc { font-size: 12px; color: #BBBBBB; line-height: 1.5; }
+
+/* Game header */
+.game-wrap { padding: 16px 0 40px; }
+.game-header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 16px; border-bottom: 2px solid #3A3A3A; margin-bottom: 24px; }
+.game-logo { font-family: 'Press Start 2P', monospace; font-size: 10px; color: #FFC107; letter-spacing: 1px; }
+.progress-dots { display: flex; gap: 2px; background: #0A1600; border: 2px solid #1A3300; border-radius: 0; padding: 3px; }
+.dot { width: 22px; height: 10px; border-radius: 0; border: none; background: #142800; transition: background 0.2s; }
+.dot.done { background: #80FF20; box-shadow: inset 0 1px 0 rgba(255,255,255,0.3); }
+.dot.current { background: #3A8800; box-shadow: inset 0 1px 0 rgba(255,255,255,0.15); }
+
+/* Sentence */
+.sentence-display { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 14px 18px; background: #5D5D5D; border: 1px solid #3A3A3A; border-radius: 0; margin-bottom: 20px; }
+.sent-token { font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #FFC107; padding: 4px 10px; background: #4A4A4A; border: 1px solid #555555; border-radius: 4px; }
+.sent-token.focus { background: #1A2A1A; border: 2px solid #5D8733; color: #FFFFFF; padding: 5px 14px; font-size: 16px; font-weight: 600; box-shadow: 0 0 14px rgba(201,148,61,0.25); }
+.context-note { font-size: 13px; color: #CCCCCC; font-style: italic; padding-left: 12px; border-left: 3px solid #5D8733; margin-bottom: 18px; line-height: 1.65; }
+
+/* Budget */
+.budget-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; padding: 10px 14px; background: #5D5D5D; border: 1px solid #3A3A3A; border-radius: 0; }
+.budget-pips { display: flex; gap: 4px; }
+.pip { width: 10px; height: 10px; border-radius: 50%; border: 1px solid #555555; background: transparent; transition: all 0.15s; }
+.pip.used { background: #5D8733; border-color: #FFC107; }
+
+/* Token grid */
+.tokens-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
+.token-card { background: #5D5D5D; border: 1px solid #3A3A3A; border-radius: 0; padding: 12px 10px; text-align: center; transition: border-color 0.2s, background 0.2s; }
+.token-card.has-chips { border-color: #FFC107; background: #4A4A4A; }
+.token-card.hi { border-color: #5D8733; background: #1E3D1E; }
+.token-card.lo { border-color: #888888; background: #3A3A3A; }
+.tok-word { font-family: 'JetBrains Mono', monospace; font-size: 15px; color: #FFC107; margin-bottom: 5px; }
+.tok-key-lbl { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: #AAAAAA; margin-bottom: 2px; }
+.tok-key-val { font-size: 11px; color: #BBBBBB; margin-bottom: 10px; line-height: 1.3; }
+.chip-row { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.chip-btn { width: 24px; height: 24px; border-radius: 50%; border: 1px solid #555555; background: #4A4A4A; color: #FFC107; font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.1s; padding: 0; line-height: 1; }
+.chip-btn:hover:not(:disabled) { background: #2a1f10; border-color: #FFC107; }
+.chip-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.chip-num { font-family: 'JetBrains Mono', monospace; font-size: 18px; color: #FFC107; min-width: 20px; text-align: center; }
+.val-reveal { display: none; margin-top: 8px; padding-top: 8px; border-top: 1px solid #2a1f10; }
+.vbar-wrap { height: 4px; background: #4A4A4A; border-radius: 2px; margin: 4px 0; }
+.vbar { height: 100%; border-radius: 2px; transition: width 0.7s ease; width: 0; }
+.val-lbl { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 2px; }
+.val-desc { font-size: 10px; line-height: 1.4; margin-top: 2px; }
+
+/* Identity meter */
+.id-section { display: none; margin-top: 20px; }
+.id-bar-wrap { height: 34px; background: #5D5D5D; border: 1px solid #3A3A3A; border-radius: 0; overflow: hidden; position: relative; margin: 8px 0; }
+.id-finance { position: absolute; left: 0; top: 0; bottom: 0; background: #5D8733; transition: width 1.2s ease; display: flex; align-items: center; padding-left: 10px; }
+.id-nature { position: absolute; right: 0; top: 0; bottom: 0; background: #3a7a30; transition: width 1.2s ease; display: flex; align-items: center; justify-content: flex-end; padding-right: 10px; }
+.id-label-in { font-size: 9px; font-weight: 600; color: #0d0a06; letter-spacing: 2px; text-transform: uppercase; }
+.id-resolution { font-size: 14px; text-align: center; margin-top: 8px; font-style: italic; }
+
+/* K!=V table */
+.kv-table { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
+.kv-row { display: grid; grid-template-columns: 100px 1fr 1fr; gap: 10px; align-items: center; }
+.kv-tok { font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #FFC107; }
+.kv-side { border-radius: 0; padding: 10px 12px; }
+.kv-side.k { background: #2A1A1A; border: 1px solid #6A2A2A; }
+.kv-side.v { background: #1E3D1E; border: 1px solid #2A4A2A; }
+.kv-hdr { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 5px; }
+.kv-side.k .kv-hdr { color: #d44a4a; }
+.kv-side.v .kv-hdr { color: #5D8733; }
+.mini-bar-wrap { height: 5px; border-radius: 3px; margin-bottom: 4px; }
+.mini-bar-k { background: #0d0508; }
+.mini-bar-v { background: #040a02; }
+.mini-bar-fill { height: 100%; border-radius: 3px; }
+.kv-text { font-size: 10px; line-height: 1.4; }
+.kv-side.k .kv-text { color: #8a6060; }
+
+/* Multi-head */
+.heads-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 18px; }
+.head-panel { background: #5D5D5D; border: 1px solid #3A3A3A; border-radius: 0; padding: 16px; }
+.head-title { font-family: 'Fraunces', serif; font-size: 17px; color: #FFC107; margin-bottom: 3px; }
+.head-sub { font-size: 11px; color: #CCCCCC; margin-bottom: 14px; }
+.head-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; }
+.head-tok { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #FFC107; }
+.syntax-pips { display: flex; gap: 3px; }
+.sp { width: 10px; height: 10px; border-radius: 50%; background: #4a7fd4; }
+
+/* Combined result */
+.combined-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.comb-box { border-radius: 0; padding: 12px; }
+.comb-box.syn { background: #1A1A2A; border: 1px solid #2A3A6A; }
+.comb-box.sem { background: #1E3D1E; border: 1px solid #2A4A2A; }
+.comb-lbl { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; }
+.comb-box.syn .comb-lbl { color: #4a7fd4; }
+.comb-box.sem .comb-lbl { color: #5D8733; }
+.comb-text { font-size: 12px; color: #DDDDDD; line-height: 1.5; }
+
+/* Closing */
+.closing-links { display: flex; gap: 12px; justify-content: center; margin-top: 32px; }
+
+/* Minecraft hotbar */
+.mc-hotbar {
+  display: flex; gap: 4px; justify-content: center;
+  padding: 20px 0 4px;
+}
+.mc-hotbar-slot {
+  width: 50px; height: 50px;
+  background: #8B8B8B;
+  border-top: 3px solid #C6C6C6; border-left: 3px solid #C6C6C6;
+  border-bottom: 3px solid #373737; border-right: 3px solid #373737;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-decoration: none; cursor: pointer; position: relative;
+  transition: none;
+}
+.mc-hotbar-slot.current {
+  background: #9A9A9A;
+  border-top-color: #FFFFFF; border-left-color: #FFFFFF;
+  border-bottom-color: #FFFFFF; border-right-color: #FFFFFF;
+  box-shadow: 0 0 0 2px #FFC107;
+}
+.mc-hotbar-slot.future {
+  background: #5A5A5A;
+  border-top-color: #8A8A8A; border-left-color: #8A8A8A;
+  border-bottom-color: #1A1A1A; border-right-color: #1A1A1A;
+  opacity: 0.6;
+}
+.mc-hotbar-num {
+  font-family: 'Press Start 2P', monospace; font-size: 7px;
+  color: #FFFFFF; text-shadow: 1px 1px #000;
+  position: absolute; top: 3px; right: 5px;
+}
+.mc-hotbar-label {
+  font-family: 'Press Start 2P', monospace; font-size: 5px;
+  color: #FFFFFF; text-shadow: 1px 1px #000;
+  margin-top: 2px; text-align: center; line-height: 1.4;
+  padding: 0 2px;
+}
+.mc-hotbar-slot.current .mc-hotbar-label { color: #FFC107; }
+
+</style>
+</head>
+<body>
+
+<!-- INTRO 1 -->
+<div id="intro1" class="screen active">
+  <div class="intro-wrap">
+    <p class="eyebrow">Level 04 / Self-Attention</p>
+    <h1 class="big-title">The Town<br>Square</h1>
+    <div class="divider"></div>
+    <p class="intro-body">Every traveler gathers here simultaneously. This is the only place in the city where tokens can speak to each other.</p>
+    <p class="intro-body">In the Map Room, "bank" was stranded — one position, two meanings, no way to choose. This is where that gets resolved. Context flows in from surrounding tokens, and identity updates.</p>
+    <div class="intro-nav">
+      <button class="btn-primary" onclick="show('intro2')">How it works →</button>
+    </div>
+  </div>
+</div>
+
+<!-- INTRO 2 -->
+<div id="intro2" class="screen">
+  <div class="intro-wrap">
+    <p class="eyebrow">The mechanism</p>
+    <h2 style="font-family:'Fraunces',serif;font-size:34px;font-weight:300;color:#FFC107;margin-bottom:8px;">Three things into the square</h2>
+    <p class="intro-body">Every token carries three vectors computed from its current representation.</p>
+    <div class="qkv-row">
+      <div class="qkv-card q">
+        <div class="qkv-letter">Q</div>
+        <div class="qkv-name">Query</div>
+        <div class="qkv-desc">What am I looking for? The question you bring. Your signal of need.</div>
+      </div>
+      <div class="qkv-card k">
+        <div class="qkv-letter">K</div>
+        <div class="qkv-name">Key</div>
+        <div class="qkv-desc">What I advertise. My sign. What others see when they scan the square for help.</div>
+      </div>
+      <div class="qkv-card v">
+        <div class="qkv-letter">V</div>
+        <div class="qkv-name">Value</div>
+        <div class="qkv-desc">What I actually hand over if chosen. The content that flows in when you listen.</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <p class="intro-body" style="font-size:13px;color:#5a4a35;">The Key and the Value are not the same thing. A word can shout its presence and deliver little. A quiet word might carry everything you need. Your budget of attention is limited — choosing well is the skill.</p>
+    <div class="intro-nav">
+      <button class="btn-ghost" onclick="show('intro1')">← Back</button>
+      <button class="btn-primary" onclick="show('round1');initRound1()">Enter the square →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ROUND 1: Single Head -->
+<div id="round1" class="screen">
+  <div class="game-wrap">
+    <div class="game-header">
+      <div class="game-logo">The Town Square</div>
+      <div class="progress-dots">
+        <div class="dot current"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+      </div>
+      <div style="font-size:12px;color:#4a3a28;">Round 1 of 3</div>
+    </div>
+
+    <div style="background:#0d0a06;border:1px solid #2a1f10;border-radius:8px;padding:12px 16px;margin-bottom:18px;display:flex;align-items:flex-start;gap:12px;">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:18px;color:#3a2a18;flex-shrink:0;margin-top:2px;">⚠</div>
+      <div>
+        <div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#4a3a28;margin-bottom:4px;">Token order scrambled</div>
+        <div style="font-size:13px;color:#5a4a35;line-height:1.6;">These tokens all appeared in the same sentence as <span style="color:#FFC107;font-family:'JetBrains Mono',monospace;">bank</span>. Their sequence has been randomized — this is how the attention mechanism sees them. Before attention runs, there is no sentence structure, only a set of tokens. You have to evaluate each one on its own signal, not its position.</div>
+      </div>
+    </div>
+
+    <div class="context-note">You are the <strong style="color:#FFC107;font-family:'JetBrains Mono',monospace;">bank</strong> token. You don't know what you mean yet. Distribute your <strong style="color:#FFC107;">10 attention chips</strong> across the surrounding tokens. Which ones are actually relevant to resolving your meaning?</div>
+
+    <div class="budget-row">
+      <span style="font-size:12px;color:#5a4a35;">Attention budget</span>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="budget-pips" id="pips"></div>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:20px;color:#FFC107;" id="budgetNum">10</span>
+        <span style="font-size:12px;color:#4a3a28;">remaining</span>
+      </div>
+    </div>
+
+    <div class="tokens-grid" id="grid1"></div>
+
+    <div style="text-align:center;margin-top:4px;">
+      <button class="btn-primary" id="listenBtn" onclick="revealValues()" disabled>Listen →</button>
+    </div>
+
+    <div class="id-section" id="idSection">
+      <div style="height:20px;"></div>
+      <div id="sentenceReveal" style="display:none;background:#5D5D5D;border:1px solid #3A3A3A;border-radius:8px;padding:12px 16px;margin-bottom:14px;">
+        <div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#4a3a28;margin-bottom:8px;">The actual sentence</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+          <span class="sent-token">After</span><span class="sent-token">the</span><span class="sent-token">flood</span><span class="sent-token">,</span><span class="sent-token">the</span>
+          <span class="sent-token focus">bank</span>
+          <span class="sent-token">eroded</span><span class="sent-token">along</span><span class="sent-token">the</span><span class="sent-token">muddy</span><span class="sent-token">shore</span><span class="sent-token">.</span>
+        </div>
+        <div style="font-size:11px;color:#4a3a28;margin-top:8px;">Now you can see the context — but attention already made its decision from the scrambled set above.</div>
+      </div>
+      <div class="section-label">bank — identity resolving</div>
+      <div class="id-bar-wrap">
+        <div class="id-finance" id="finBar" style="width:50%;"><span class="id-label-in">FINANCE</span></div>
+        <div class="id-nature" id="natBar" style="width:50%;"><span class="id-label-in">NATURE</span></div>
+      </div>
+      <div class="id-resolution" id="idRes"></div>
+      <div class="insight-card" id="r1insight" style="display:none;margin-top:14px;">
+        <div class="insight-label">What just happened</div>
+        <div class="insight-text" id="r1insightText"></div>
+      </div>
+      <div style="text-align:center;margin-top:20px;">
+        <button class="btn-primary" onclick="show('round2');buildKVTable()">See K ≠ V →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ROUND 2: K ≠ V -->
+<div id="round2" class="screen">
+  <div class="game-wrap">
+    <div class="game-header">
+      <div class="game-logo">The Town Square</div>
+      <div class="progress-dots">
+        <div class="dot done"></div>
+        <div class="dot current"></div>
+        <div class="dot"></div>
+      </div>
+      <div style="font-size:12px;color:#4a3a28;">Round 2 of 3</div>
+    </div>
+
+    <h3 style="font-family:'Fraunces',serif;font-size:26px;font-weight:300;color:#FFC107;margin-bottom:8px;">Not every sign is worth following</h3>
+    <p style="font-size:13px;color:#6a5840;line-height:1.7;margin-bottom:20px;">Below is every token in the sentence — what each advertises (Key) versus what it actually delivers (Value). The gap between those two is the point.</p>
+
+    <div style="display:grid;grid-template-columns:100px 1fr 1fr;gap:8px;margin-bottom:8px;padding:0 2px;">
+      <div></div>
+      <div style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:#d44a4a;padding-left:12px;">KEY — What it broadcasts</div>
+      <div style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:#6a9030;padding-left:12px;">VALUE — What it delivers</div>
+    </div>
+    <div class="kv-table" id="kvTable"></div>
+
+    <div class="insight-card" style="margin-top:18px;">
+      <div class="insight-label">The K ≠ V principle</div>
+      <div class="insight-text">Key and Value are computed by different learned weight matrices from the same input. This separation is intentional: being "findable" (Key) and being "useful" (Value) are independent properties the model learns separately. Function words like "the" and "after" appear everywhere — they look important — but they contribute little to meaning resolution. The attention mechanism learns to route past them.</div>
+    </div>
+
+    <div style="text-align:center;margin-top:24px;">
+      <button class="btn-primary" onclick="show('round3');initRound3()">Two heads are better than one →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ROUND 3: Multi-Head -->
+<div id="round3" class="screen">
+  <div class="game-wrap">
+    <div class="game-header">
+      <div class="game-logo">The Town Square</div>
+      <div class="progress-dots">
+        <div class="dot done"></div>
+        <div class="dot done"></div>
+        <div class="dot current"></div>
+      </div>
+      <div style="font-size:12px;color:#4a3a28;">Round 3 of 3</div>
+    </div>
+
+    <h3 style="font-family:'Fraunces',serif;font-size:26px;font-weight:300;color:#FFC107;margin-bottom:8px;">Multi-head attention</h3>
+    <p style="font-size:13px;color:#6a5840;line-height:1.7;margin-bottom:18px;">Attention doesn't run once — it runs in parallel across multiple heads, each with different weight matrices, each learning to look for different things. You have two advisors. The Syntax head has already allocated its chips. You control the Semantic head — 6 chips to distribute.</p>
+
+    <p class="section-label">The sentence</p>
+    <div class="sentence-display" style="margin-bottom:18px;">
+      <span class="sent-token">After</span><span class="sent-token">the</span><span class="sent-token">flood</span><span class="sent-token">,</span><span class="sent-token">the</span>
+      <span class="sent-token focus">bank</span>
+      <span class="sent-token">eroded</span><span class="sent-token">along</span><span class="sent-token">the</span><span class="sent-token">muddy</span><span class="sent-token">shore</span><span class="sent-token">.</span>
+    </div>
+
+    <div class="heads-grid">
+      <!-- Syntax head -->
+      <div class="head-panel">
+        <div class="head-title">Syntax Head</div>
+        <div class="head-sub">Grammar &amp; structure — pre-determined</div>
+        <div id="syntaxRows"></div>
+        <div style="font-size:11px;color:#4a3a28;margin-top:10px;font-style:italic;">This head attends to grammatical neighbors — the verb that bank is subject to, function words that mark clause structure.</div>
+      </div>
+      <!-- Semantic head -->
+      <div class="head-panel">
+        <div class="head-title">Semantic Head</div>
+        <div class="head-sub" id="semBudgetLabel">Meaning &amp; domain — <span style="color:#FFC107;">6 chips, your call</span></div>
+        <div id="semRows"></div>
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-top:8px;">
+      <button class="btn-primary" id="combineBtn" onclick="combineHeads()" disabled>Combine heads →</button>
+    </div>
+
+    <div id="combinedResult" style="display:none;margin-top:20px;">
+      <div class="card">
+        <div class="section-label" style="margin-bottom:12px;">bank — combined output</div>
+        <div class="combined-grid">
+          <div class="comb-box syn">
+            <div class="comb-lbl">Syntax head says</div>
+            <div class="comb-text">bank is a noun · subject of "eroded" · third position in the main clause · grammatically stable</div>
+          </div>
+          <div class="comb-box sem" id="semResult">
+            <div class="comb-lbl">Semantic head says</div>
+            <div class="comb-text" id="semResultText"></div>
+          </div>
+        </div>
+        <div style="background:#0d0a06;border:1px solid #2a1f10;border-radius:6px;padding:12px;margin-top:2px;">
+          <div style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:#5a4a35;margin-bottom:6px;">Final — bank is now</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:15px;color:#FFC107;" id="finalIdentity">...</div>
+        </div>
+      </div>
+      <div class="insight-card" style="margin-top:12px;">
+        <div class="insight-label">The Map Room problem — solved</div>
+        <div class="insight-text">In Level 2, "bank" was stranded between two meanings with a single fixed embedding. Here, attention pulled it fully into its correct context through weighted listening. The same word in a sentence about deposits and accounts would attend to different tokens entirely — and resolve to a different identity. Context is computed, not stored.</div>
+      </div>
+      <div style="text-align:center;margin-top:24px;">
+        <button class="btn-primary" onclick="show('closing')">See what you've learned →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CLOSING -->
+<div id="closing" class="screen">
+  <div class="intro-wrap">
+    <p class="eyebrow">Level 04 — Complete</p>
+    <h1 class="big-title">Resolved</h1>
+    <div class="divider"></div>
+    <div class="card" style="max-width:560px;margin:0 auto 16px;text-align:left;">
+      <div class="section-label" style="margin-bottom:10px;">What self-attention does</div>
+      <p style="font-size:14px;color:#8a7460;line-height:1.75;margin-bottom:10px;">Every token simultaneously computes a Query, a Key, and a Value. Query × Key scores give relevance. Softmax turns scores into weights that sum to 1 — an attention budget. Those weights × Values give a weighted mixture that flows into the token's new representation.</p>
+      <p style="font-size:14px;color:#8a7460;line-height:1.75;">This runs H times in parallel (multi-head), each head with different weight matrices, each specializing in different relationships — syntax, semantics, co-reference, and more. Their outputs are concatenated and projected back down to the original dimension.</p>
+    </div>
+    <div class="insight-card" style="max-width:560px;margin:0 auto 20px;text-align:left;">
+      <div class="insight-label">What comes next</div>
+      <div class="insight-text">Attention changed "bank" — but it didn't erase what came before. Your original embedding, your position signal, and your new context all need to combine without any single update overwriting the rest. That's the job of the residual connection. Level 5: The Thread.</div>
+    </div>
+    <div class="closing-links">
+      <button class="btn-ghost" onclick="show('intro1')">← Replay</button>
+      <a href="the-thread.html"><button class="btn-primary">The Thread →</button></a>
+    </div>
+  </div>
+</div>
+
+<script>
+const TOKENS = [
+  { id:'after',  word:'after',   key:'TIME MARKER',  keyDesc:'marks sequence in time',          val:0.10, hi:false, valDesc:'thin — sets temporal context, says nothing about meaning' },
+  { id:'the',    word:'the',     key:'ARTICLE',      keyDesc:'common function word',             val:0.05, hi:false, valDesc:'nearly empty — grammatically necessary, semantically hollow' },
+  { id:'flood',  word:'flood',   key:'WATER EVENT',  keyDesc:'sudden rush of water',             val:0.90, hi:true,  valDesc:'strong — natural water disaster, defines the environment' },
+  { id:'eroded', word:'eroded',  key:'EROSION',      keyDesc:'gradual physical wearing away',    val:0.80, hi:true,  valDesc:'strong — physical landscape change, consistent with riverbank' },
+  { id:'along',  word:'along',   key:'POSITION',     keyDesc:'spatial preposition',              val:0.10, hi:false, valDesc:'thin — tells you where, not what kind of place' },
+  { id:'muddy',  word:'muddy',   key:'SOIL / EARTH', keyDesc:'wet earth, sediment',              val:0.80, hi:true,  valDesc:'strong — earthen, natural environment' },
+  { id:'shore',  word:'shore',   key:'WATERSIDE',    keyDesc:'edge between land and water',      val:0.95, hi:true,  valDesc:'very strong — defines the boundary of a natural waterway' },
+];
+const SYNTAX_ALLOC = { after:0, the:2, flood:0, eroded:3, along:1, muddy:0, shore:0 };
+const BUDGET = 10;
+const SEM_BUDGET = 6;
+
+let chips = {}, semChips = {}, remaining = BUDGET, semRemaining = SEM_BUDGET;
+TOKENS.forEach(t => { chips[t.id] = 0; semChips[t.id] = 0; });
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+/* ── ROUND 1 ── */
+function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
+
+function initRound1() {
+  chips = {}; remaining = BUDGET;
+  TOKENS.forEach(t => chips[t.id] = 0);
+  document.getElementById('idSection').style.display = 'none';
+  document.getElementById('r1insight').style.display = 'none';
+  renderPips();
+  renderGrid(shuffle(TOKENS));
+}
+
+function renderPips() {
+  const el = document.getElementById('pips');
+  el.innerHTML = '';
+  for (let i = 0; i < BUDGET; i++) {
+    const p = document.createElement('div');
+    p.className = 'pip' + (i >= remaining ? ' used' : '');
+    el.appendChild(p);
+  }
+  document.getElementById('budgetNum').textContent = remaining;
+  document.getElementById('listenBtn').disabled = (remaining === BUDGET);
+}
+
+function renderGrid(orderedTokens) {
+  const g = document.getElementById('grid1');
+  g.innerHTML = '';
+  (orderedTokens || TOKENS).forEach(t => {
+    const c = document.createElement('div');
+    c.className = 'token-card' + (chips[t.id] > 0 ? ' has-chips' : '');
+    c.id = 'tc-' + t.id;
+    c.innerHTML = `
+      <div class="tok-word">${t.word}</div>
+      <div class="tok-key-lbl">Key</div>
+      <div class="tok-key-val">${t.key}</div>
+      <div class="chip-row">
+        <button class="chip-btn" id="m-${t.id}" onclick="adj('${t.id}',-1)">−</button>
+        <span class="chip-num" id="cn-${t.id}">0</span>
+        <button class="chip-btn" id="p-${t.id}" onclick="adj('${t.id}',1)">+</button>
+      </div>
+      <div class="val-reveal" id="vr-${t.id}">
+        <div class="val-lbl" style="color:${t.hi?'#6a9030':'#c04040'};">Value</div>
+        <div class="vbar-wrap" style="background:#1a1408;"><div class="vbar" id="vb-${t.id}" style="background:${t.hi?'#6a9030':'#c04040'};"></div></div>
+        <div class="val-desc" style="color:${t.hi?'#6a8050':'#8a6060'};">${t.valDesc}</div>
+      </div>`;
+    g.appendChild(c);
+  });
+  updateBtns();
+}
+
+function adj(id, d) {
+  if (d === 1 && remaining === 0) return;
+  if (d === -1 && chips[id] === 0) return;
+  chips[id] += d; remaining -= d;
+  document.getElementById('cn-'+id).textContent = chips[id];
+  document.getElementById('tc-'+id).className = 'token-card' + (chips[id] > 0 ? ' has-chips' : '');
+  renderPips(); updateBtns();
+}
+
+function updateBtns() {
+  TOKENS.forEach(t => {
+    document.getElementById('m-'+t.id).disabled = chips[t.id] === 0;
+    document.getElementById('p-'+t.id).disabled = remaining === 0;
+  });
+  document.getElementById('listenBtn').disabled = remaining === BUDGET;
+}
+
+function revealValues() {
+  TOKENS.forEach(t => {
+    const vr = document.getElementById('vr-'+t.id);
+    vr.style.display = 'block';
+    setTimeout(() => { document.getElementById('vb-'+t.id).style.width = (t.val * 100) + '%'; }, 80);
+    const card = document.getElementById('tc-'+t.id);
+    card.className = 'token-card ' + (t.hi ? 'hi' : 'lo');
+  });
+  document.getElementById('listenBtn').disabled = true;
+
+  // Compute nature score
+  let natureScore = TOKENS.filter(t=>t.hi).reduce((s,t) => s + chips[t.id] * t.val, 0);
+  const maxScore = TOKENS.filter(t=>t.hi).reduce((s,t) => s + t.val, 0);
+  const pct = Math.min(0.90, natureScore / (maxScore * 0.6));
+
+  const sec = document.getElementById('idSection');
+  sec.style.display = 'block';
+  setTimeout(() => {
+    const np = Math.round(Math.max(25, Math.min(88, pct * 100)));
+    const fp = 100 - np;
+    document.getElementById('natBar').style.width = np + '%';
+    document.getElementById('finBar').style.width = fp + '%';
+    setTimeout(() => {
+      const res = document.getElementById('idRes');
+      if (np >= 55) {
+        res.textContent = '→ bank resolves as: riverbank — a natural earthen waterway boundary';
+        res.style.color = '#6a9030';
+      } else {
+        res.textContent = '→ still ambiguous — try attending more to flood, eroded, muddy, shore';
+        res.style.color = '#FFC107';
+      }
+      const ins = document.getElementById('r1insight');
+      ins.style.display = 'block';
+      const placed = BUDGET - remaining;
+      document.getElementById('r1insightText').textContent =
+        'You placed ' + placed + ' of 10 chips. Each token contributed its Value proportional to the chips it received. The high-value tokens — flood, eroded, muddy, shore — carried strong nature-domain signal. The low-value tokens — the, after, along — had visible Keys but thin Values. Your weighted sum of their Values became the update to bank\'s representation.';
+
+      // Reveal the actual sentence now
+      const sentReveal = document.getElementById('sentenceReveal');
+      if (sentReveal) sentReveal.style.display = 'block';
+    }, 900);
+  }, 100);
+}
+
+/* ── ROUND 2: K/V TABLE ── */
+function buildKVTable() {
+  const t = document.getElementById('kvTable');
+  t.innerHTML = '';
+  TOKENS.forEach(tok => {
+    const row = document.createElement('div');
+    row.className = 'kv-row';
+    const keyW = 58; // keys shown at uniform 58% to show they all seem present
+    const valW = Math.round(tok.val * 100);
+    const valColor = tok.hi ? '#6a9030' : '#c04040';
+    const valTextColor = tok.hi ? '#6a8050' : '#8a6060';
+    row.innerHTML = `
+      <div class="kv-tok">${tok.word}</div>
+      <div class="kv-side k">
+        <div class="kv-hdr">${tok.key}</div>
+        <div class="mini-bar-wrap mini-bar-k"><div class="mini-bar-fill" style="background:#d44a4a;width:${keyW}%;"></div></div>
+        <div class="kv-text">${tok.keyDesc}</div>
+      </div>
+      <div class="kv-side v">
+        <div class="kv-hdr" style="color:${valColor};">Strength: ${valW}%</div>
+        <div class="mini-bar-wrap mini-bar-v"><div class="mini-bar-fill" style="background:${valColor};width:${valW}%;"></div></div>
+        <div class="kv-text" style="color:${valTextColor};">${tok.valDesc}</div>
+      </div>`;
+    t.appendChild(row);
+  });
+}
+
+/* ── ROUND 3: MULTI-HEAD ── */
+function initRound3() {
+  semChips = {}; semRemaining = SEM_BUDGET;
+  TOKENS.forEach(t => semChips[t.id] = 0);
+  document.getElementById('combinedResult').style.display = 'none';
+  document.getElementById('combineBtn').disabled = true;
+
+  // Syntax rows (locked)
+  const sr = document.getElementById('syntaxRows');
+  sr.innerHTML = '';
+  TOKENS.forEach(t => {
+    if (!SYNTAX_ALLOC[t.id]) return;
+    const row = document.createElement('div');
+    row.className = 'head-row';
+    const pips = Array(SYNTAX_ALLOC[t.id]).fill('<div class="sp"></div>').join('');
+    row.innerHTML = `<span class="head-tok">${t.word}</span><div class="syntax-pips">${pips}</div>`;
+    sr.appendChild(row);
+  });
+
+  // Semantic rows (player)
+  const sr2 = document.getElementById('semRows');
+  sr2.innerHTML = '';
+  TOKENS.forEach(t => {
+    const row = document.createElement('div');
+    row.className = 'head-row';
+    row.style.marginBottom = '8px';
+    row.innerHTML = `
+      <span class="head-tok">${t.word}</span>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <button class="chip-btn" style="width:20px;height:20px;font-size:13px;" id="sm-${t.id}" onclick="sadj('${t.id}',-1)" disabled>−</button>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:14px;color:#6a9030;min-width:16px;text-align:center;" id="sc-${t.id}">0</span>
+        <button class="chip-btn" style="width:20px;height:20px;font-size:13px;" id="sp-${t.id}" onclick="sadj('${t.id}',1)">+</button>
+      </div>`;
+    sr2.appendChild(row);
+  });
+  updateSemBudget();
+}
+
+function sadj(id, d) {
+  if (d === 1 && semRemaining === 0) return;
+  if (d === -1 && semChips[id] === 0) return;
+  semChips[id] += d; semRemaining -= d;
+  document.getElementById('sc-'+id).textContent = semChips[id];
+  document.getElementById('sm-'+id).disabled = semChips[id] === 0;
+  updateSemBudget();
+}
+
+function updateSemBudget() {
+  TOKENS.forEach(t => {
+    const sp = document.getElementById('sp-'+t.id);
+    if (sp) sp.disabled = semRemaining === 0;
+  });
+  document.getElementById('semBudgetLabel').innerHTML =
+    'Meaning &amp; domain — <span style="color:#FFC107;">' + semRemaining + ' chips remaining</span>';
+  document.getElementById('combineBtn').disabled = semRemaining === SEM_BUDGET;
+}
+
+function combineHeads() {
+  const score = TOKENS.reduce((s,t) => s + semChips[t.id] * t.val, 0);
+  let semText, identity;
+  if (score >= 3.5) {
+    semText = 'strong nature signals — flood, erosion, and shore dominate; domain clearly established as natural waterway environment';
+    identity = 'a riverbank — a natural earthen boundary worn by floodwater';
+  } else if (score >= 1.5) {
+    semText = 'moderate signals received — some nature-domain context, but meaning only partially resolved';
+    identity = 'bank — leaning toward natural context, still some ambiguity';
+  } else {
+    semText = 'weak signals — mostly function words attended; domain unclear';
+    identity = 'bank — identity still ambiguous (try attending to flood, muddy, shore)';
+  }
+  document.getElementById('semResultText').textContent = semText;
+  document.getElementById('finalIdentity').textContent = identity;
+  document.getElementById('combinedResult').style.display = 'block';
+  document.getElementById('combineBtn').disabled = true;
+  setTimeout(() => document.getElementById('combinedResult').scrollIntoView({behavior:'smooth',block:'nearest'}), 100);
+}
+</script>
+  <div class="mc-hotbar">
+    <a href="the-gate.html" class="mc-hotbar-slot">
+      <div class="mc-hotbar-num">1</div>
+      <div class="mc-hotbar-label">Gate</div>
+    </a>
+    <a href="the-map-room.html" class="mc-hotbar-slot">
+      <div class="mc-hotbar-num">2</div>
+      <div class="mc-hotbar-label">Map</div>
+    </a>
+    <a href="the-census-bureau.html" class="mc-hotbar-slot">
+      <div class="mc-hotbar-num">3</div>
+      <div class="mc-hotbar-label">Bureau</div>
+    </a>
+    <a href="javascript:void(0)" class="mc-hotbar-slot current">
+      <div class="mc-hotbar-num">4</div>
+      <div class="mc-hotbar-label">Square</div>
+    </a>
+    <a href="the-thread.html" class="mc-hotbar-slot future">
+      <div class="mc-hotbar-num">5</div>
+      <div class="mc-hotbar-label">Thread</div>
+    </a>
+    <a href="the-library.html" class="mc-hotbar-slot future">
+      <div class="mc-hotbar-num">6</div>
+      <div class="mc-hotbar-label">Library</div>
+    </a>
+    <a href="the-tower.html" class="mc-hotbar-slot future">
+      <div class="mc-hotbar-num">7</div>
+      <div class="mc-hotbar-label">Tower</div>
+    </a>
+    <a href="the-oracle.html" class="mc-hotbar-slot future">
+      <div class="mc-hotbar-num">8</div>
+      <div class="mc-hotbar-label">Oracle</div>
+    </a>
+  </div>
+</body>
+</html>

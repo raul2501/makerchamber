@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Census Bureau — Level 3: Positional Encoding</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Fraunces:opsz,wght@9..144,300;9..144,600&family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #2C2C2C;
+  color: #FFFFFF;
+  font-family: 'Inter', sans-serif;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  padding: 24px 16px;
+}
+
+.screen { display: none; width: 100%; max-width: 860px; }
+.screen.active { display: block; }
+
+/* ── SHARED ── */
+.eyebrow { font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: 2px; text-transform: uppercase; color: #CCCCCC; margin-bottom: 18px; line-height: 2; }
+.big-title { font-family: 'Fraunces', serif; font-size: 56px; font-weight: 300; color: #FFC107; line-height: 1; }
+.divider { width: 100%; height: 2px; background: repeating-linear-gradient(90deg, #4A4A4A 0px, #4A4A4A 8px, transparent 8px, transparent 12px); margin: 20px 0; border: none; }
+.section-label { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: 1px; text-transform: uppercase; color: #AAAAAA; margin-bottom: 10px; line-height: 2; }
+.card { background: #5D5D5D; border-top: 3px solid #9A9A9A; border-left: 3px solid #9A9A9A; border-bottom: 3px solid #1A1A1A; border-right: 3px solid #1A1A1A; border-radius: 0; padding: 16px 20px; box-shadow: inset 2px 2px 0 #7A7A7A, inset -2px -2px 0 #1A1A1A; }
+.insight-card { background: #1E3D1E; border-top: 3px solid #4A8A4A; border-left: 3px solid #4A8A4A; border-bottom: 3px solid #0A1A0A; border-right: 3px solid #0A1A0A; border-radius: 0; padding: 14px 18px; box-shadow: inset 1px 1px 0 #3A6A2A; }
+.insight-label { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: 1px; text-transform: uppercase; color: #80C840; margin-bottom: 8px; line-height: 2; }
+.insight-text { font-size: 13px; color: #80FF20; line-height: 1.6; }
+
+.btn-primary {
+  display: inline-block; padding: 12px 36px;
+  background: #5D8733; color: #FFFFFF; border: none;
+  font-family: 'Fraunces', serif; font-size: 17px; font-weight: 600;
+  cursor: pointer; border-radius: 0; transition: background 0.15s, transform 0.1s;
+}
+.btn-primary:hover { background: #6B9E38; transform: none; } .btn-primary:active { border-top-color: #2A5A18; border-left-color: #2A5A18; border-bottom-color: #8DB360; border-right-color: #8DB360; }
+.btn-primary:disabled { background: #3A3A3A; color: #666666; cursor: not-allowed; border-color: #2A2A2A; border-radius: 0; }
+.btn-ghost {
+  display: inline-block; padding: 10px 28px;
+  background: transparent; color: #CCCCCC; border: 1px solid #555555;
+  font-family: 'Inter', sans-serif; font-size: 14px;
+  cursor: pointer; border-radius: 0; transition: all 0.15s;
+}
+.btn-ghost:hover { border-color: #FFC107; color: #FFC107; background: #6A6A6A; }
+
+/* ── INTRO ── */
+#intro { padding: 48px 0; text-align: center; }
+.intro-body { max-width: 500px; margin: 0 auto 24px; color: #DDDDDD; font-size: 15px; line-height: 1.85; }
+.intro-nav { display: flex; justify-content: center; gap: 12px; margin-top: 36px; }
+
+/* ── GAME ── */
+#game { padding: 16px 0 40px; }
+.game-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-bottom: 16px; border-bottom: 2px solid #3A3A3A; margin-bottom: 24px;
+}
+.game-logo { font-family: 'Press Start 2P', monospace; font-size: 10px; color: #FFC107; letter-spacing: 1px; }
+.progress-dots { display: flex; gap: 2px; background: #0A1600; border: 2px solid #1A3300; border-radius: 0; padding: 3px; }
+.dot { width: 22px; height: 10px; border-radius: 0; border: none; background: #142800; transition: background 0.2s; }
+.dot.done { background: #80FF20; box-shadow: inset 0 1px 0 rgba(255,255,255,0.3); }
+.dot.current { background: #3A8800; box-shadow: inset 0 1px 0 rgba(255,255,255,0.15); }
+.round-label { font-size: 12px; color: #AAAAAA; }
+
+.round-section { display: none; }
+.round-section.active { display: block; }
+
+.context-text {
+  font-size: 13px; color: #CCCCCC; font-style: italic;
+  padding-left: 12px; border-left: 3px solid #5D8733;
+  margin-bottom: 20px; line-height: 1.65;
+}
+
+/* ── ROUND 1: SCRAMBLE ── */
+.problem-banner {
+  background: #3D1A1A; border: 1px solid #5A3030; border-radius: 0;
+  padding: 16px 20px; margin-bottom: 20px;
+}
+.problem-banner-label { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #CC6666; margin-bottom: 8px; }
+.problem-banner-text { font-size: 14px; color: #DDAAAA; line-height: 1.65; }
+
+/* Comparison panel */
+.comparison-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: center; margin-bottom: 24px; }
+.comparison-sentence { background: #5D5D5D; border: 1px solid #3A3A3A; border-radius: 0; padding: 14px 16px; }
+.comparison-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #AAAAAA; margin-bottom: 8px; }
+.comparison-tokens { display: flex; gap: 6px; flex-wrap: wrap; }
+.comparison-vs { font-family: 'Fraunces', serif; font-size: 20px; color: #888888; text-align: center; }
+
+.ctoken {
+  font-family: 'JetBrains Mono', monospace; font-size: 13px;
+  padding: 5px 10px; border-radius: 0;
+  background: #4A4A4A; border: 1px solid #777777; color: #CCCCCC;
+  transition: all 0.4s;
+}
+.ctoken.with-pos { border-color: #FFC107; }
+.ctoken .pos-badge {
+  font-size: 9px; color: #FFC107; vertical-align: super;
+  opacity: 0; transition: opacity 0.4s; margin-left: 2px;
+}
+.ctoken.with-pos .pos-badge { opacity: 1; }
+
+.match-indicator {
+  text-align: center; margin-bottom: 20px; font-size: 13px;
+  color: #DDAAAA; transition: color 0.5s;
+}
+.match-indicator.resolved { color: #5D8733; }
+.match-indicator .indicator-icon { font-size: 18px; }
+
+/* Scramble area */
+.scramble-label { font-size: 13px; color: #CCCCCC; margin-bottom: 12px; }
+.token-pool { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; min-height: 56px; }
+
+.draggable-token {
+  font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 600;
+  padding: 10px 18px; background: #4A4A4A; border: 1.5px solid #5D8733;
+  border-radius: 0; color: #FFFFFF; cursor: grab; user-select: none;
+  transition: box-shadow 0.15s, opacity 0.2s;
+  display: flex; align-items: center; gap: 8px;
+}
+.draggable-token:hover { box-shadow: 0 4px 16px rgba(93,135,51,0.4); }
+.draggable-token.used { opacity: 0.25; pointer-events: none; }
+.draggable-token.dragging { opacity: 0.4; }
+
+.token-meaning-bar {
+  width: 4px; height: 24px; border-radius: 2px; flex-shrink: 0;
+}
+
+/* Slots */
+.slots-row { display: flex; gap: 10px; margin-bottom: 20px; }
+.slot {
+  flex: 1; height: 60px; border: 1.5px dashed #3a2a18; border-radius: 0;
+  display: flex; align-items: center; justify-content: center;
+  position: relative; transition: border-color 0.15s, background 0.15s;
+}
+.slot.over { border-color: #FFC107; background: #1e160a; }
+.slot.filled { border-style: solid; border-color: #4a3a20; background: #4A4A4A; }
+.slot-number {
+  position: absolute; top: 4px; left: 8px;
+  font-size: 10px; color: #888888; font-family: 'JetBrains Mono', monospace;
+}
+.slot-content {
+  font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 600;
+  color: #FFC107; display: flex; align-items: center; gap: 6px;
+}
+.slot-pos-badge {
+  font-size: 10px; color: #8a7060; background: #2a1f0e;
+  padding: 2px 6px; border-radius: 3px; border: 1px solid #555555;
+  opacity: 0; transition: opacity 0.4s 0.3s;
+}
+.slot.filled .slot-pos-badge { opacity: 1; }
+.slot-return { position: absolute; top: 4px; right: 6px; font-size: 11px; color: #888888; cursor: pointer; }
+.slot-return:hover { color: #FFC107; }
+
+/* ── ROUND 2: ONLY ── */
+.only-sentences { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+.only-sentence-card {
+  background: #5D5D5D; border: 1px solid #3A3A3A; border-radius: 0;
+  padding: 14px 18px; display: flex; align-items: center; gap: 16px;
+}
+.only-sentence-text { font-size: 16px; color: #DDDDDD; flex: 1; line-height: 1.5; }
+.only-sentence-text .only-word {
+  font-family: 'JetBrains Mono', monospace; font-weight: 600;
+  color: #FFC107; background: #1e160a; padding: 1px 6px;
+  border: 1px solid #5D873344; border-radius: 3px;
+}
+.only-pos-badge {
+  font-size: 11px; font-family: 'JetBrains Mono', monospace;
+  padding: 3px 8px; border-radius: 4px; color: #CCCCCC;
+  background: #4A4A4A; border: 1px solid #3A3A3A;
+  white-space: nowrap; transition: all 0.4s;
+}
+.only-pos-badge.encoded { color: #FFC107; border-color: #FFC10755; }
+.only-meaning { font-size: 12px; color: #AAAAAA; font-style: italic; }
+
+/* Mini-map for Round 2 */
+.minimap-wrap {
+  background: #0e0b07; border: 1px solid #3A3A3A; border-radius: 0;
+  overflow: hidden; margin-bottom: 16px;
+}
+svg#minimap { display: block; width: 100%; }
+
+/* ── ROUND 3: PARALLEL PARADOX ── */
+.timeline-wrap {
+  background: #0e0b07; border: 1px solid #3A3A3A; border-radius: 0;
+  padding: 24px; margin-bottom: 20px; position: relative; overflow: hidden;
+}
+
+.timeline-phase { margin-bottom: 24px; opacity: 0; transition: opacity 0.5s; }
+.timeline-phase.visible { opacity: 1; }
+.phase-label {
+  font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.phase-tokens { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.phase-token {
+  font-family: 'JetBrains Mono', monospace; font-size: 14px;
+  padding: 6px 12px; border-radius: 0; border: 1px solid;
+  display: flex; align-items: center; gap: 6px;
+}
+.phase-token.raw { background: #5D5D5D; border-color: #2a1f10; color: #CCCCCC; }
+.phase-token.stamped { background: #4A4A4A; border-color: #4a3a20; color: #c9a060; }
+.phase-token.processing { background: #0a1020; border-color: #1a2a50; color: #4060c0; }
+.phase-token.all-at-once { animation: pulseBlue 0.6s ease-out; }
+
+.pos-stamp {
+  font-size: 10px; padding: 2px 5px; border-radius: 3px;
+  background: #2a1f0e; color: #FFC107; border: 1px solid #4a3020;
+}
+.attn-spark {
+  font-size: 10px; padding: 2px 5px; border-radius: 3px;
+  background: #0a102a; color: #4060c0; border: 1px solid #1a2a50;
+}
+
+.phase-connector {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 20px;
+  opacity: 0; transition: opacity 0.5s;
+}
+.phase-connector.visible { opacity: 1; }
+.connector-line { flex: 1; height: 1px; background: #2a1f10; }
+.connector-label { font-size: 11px; color: #888888; white-space: nowrap; }
+
+.paradox-question {
+  background: #3D1A1A; border: 1px solid #5A3030; border-radius: 0;
+  padding: 18px 22px; margin-bottom: 16px; opacity: 0; transition: opacity 0.5s;
+}
+.paradox-question.visible { opacity: 1; }
+.paradox-q-label { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #CC6666; margin-bottom: 8px; }
+.paradox-q-text { font-size: 15px; color: #a06060; line-height: 1.6; }
+
+.choice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; opacity: 0; transition: opacity 0.5s; }
+.choice-grid.visible { opacity: 1; }
+.choice-card {
+  background: #5D5D5D; border: 1.5px solid #2a1f10; border-radius: 0;
+  padding: 16px; cursor: pointer; transition: all 0.2s; text-align: center;
+}
+.choice-card:hover { border-color: #CCCCCC; }
+.choice-card.selected-wrong { border-color: #5a1818; background: #3D1A1A; }
+.choice-card.selected-right { border-color: #80C840; background: #1E3D1E; }
+.choice-letter { font-family: 'Fraunces', serif; font-size: 28px; color: #888888; margin-bottom: 6px; }
+.choice-card.selected-right .choice-letter { color: #5D8733; }
+.choice-card.selected-wrong .choice-letter { color: #8a3030; }
+.choice-text { font-size: 13px; color: #CCCCCC; line-height: 1.5; }
+.choice-card.selected-right .choice-text { color: #5a7a40; }
+.choice-card.selected-wrong .choice-text { color: #6a3a3a; }
+
+.answer-reveal { opacity: 0; transition: opacity 0.5s; }
+.answer-reveal.visible { opacity: 1; }
+
+@keyframes pulseBlue {
+  0% { box-shadow: 0 0 0 0 #4060c044; }
+  50% { box-shadow: 0 0 0 12px #4060c000; }
+  100% { box-shadow: none; }
+}
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── CLOSING ── */
+#closing { padding: 40px 0; max-width: 600px; margin: 0 auto; }
+.closing-section { margin-bottom: 20px; }
+.closing-section-label { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #AAAAAA; margin-bottom: 10px; }
+.closing-text { font-size: 15px; color: #DDDDDD; line-height: 1.85; }
+.teaser-card { background: #0a100a; border: 1px solid #1e301e; border-radius: 0; padding: 20px 24px; margin: 24px 0; }
+.teaser-label { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #2a4a2a; margin-bottom: 10px; }
+.teaser-text { font-size: 14px; color: #5a8050; line-height: 1.75; }
+
+/* Floating drag ghost */
+#drag-ghost { position: fixed; pointer-events: none; z-index: 1000; display: none; transform: translate(-50%, -50%); }
+
+/* Minecraft hotbar */
+.mc-hotbar {
+  display: flex; gap: 4px; justify-content: center;
+  padding: 20px 0 4px;
+}
+.mc-hotbar-slot {
+  width: 50px; height: 50px;
+  background: #8B8B8B;
+  border-top: 3px solid #C6C6C6; border-left: 3px solid #C6C6C6;
+  border-bottom: 3px solid #373737; border-right: 3px solid #373737;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-decoration: none; cursor: pointer; position: relative;
+  transition: none;
+}
+.mc-hotbar-slot.current {
+  background: #9A9A9A;
+  border-top-color: #FFFFFF; border-left-color: #FFFFFF;
+  border-bottom-color: #FFFFFF; border-right-color: #FFFFFF;
+  box-shadow: 0 0 0 2px #FFC107;
+}
+.mc-hotbar-slot.future {
+  background: #5A5A5A;
+  border-top-color: #8A8A8A; border-left-color: #8A8A8A;
+  border-bottom-color: #1A1A1A; border-right-color: #1A1A1A;
+  opacity: 0.6;
+}
+.mc-hotbar-num {
+  font-family: 'Press Start 2P', monospace; font-size: 7px;
+  color: #FFFFFF; text-shadow: 1px 1px #000;
+  position: absolute; top: 3px; right: 5px;
+}
+.mc-hotbar-label {
+  font-family: 'Press Start 2P', monospace; font-size: 5px;
+  color: #FFFFFF; text-shadow: 1px 1px #000;
+  margin-top: 2px; text-align: center; line-height: 1.4;
+  padding: 0 2px;
+}
+.mc-hotbar-slot.current .mc-hotbar-label { color: #FFC107; }
+
+</style>
+</head>
+<body>
+
+<div id="drag-ghost">
+  <div class="draggable-token" style="cursor:grabbing">
+    <div class="token-meaning-bar" id="ghost-bar"></div>
+    <span id="ghost-word"></span>
+  </div>
+</div>
+
+<!-- ══════════ INTRO ══════════ -->
+<div id="intro" class="screen active">
+  <div style="text-align:center; padding:48px 0;">
+    <div class="eyebrow">The Transformer · Level 3 of 8</div>
+    <h1 class="big-title">The Census Bureau</h1>
+    <div class="divider"></div>
+
+    <div class="intro-body">
+      <p>The City reads every traveler at once — all of them, simultaneously. But when everything arrives together, order vanishes. "Dog bites man" and "man bites dog" are the same bag of tokens.</p>
+      <br>
+      <p>The Bureau stamps each traveler with their arrival number <em>before</em> the gates open. Not a tag — baked directly into who they are.</p>
+    </div>
+
+    <div class="card" style="max-width:460px; margin: 0 auto 32px; text-align:left;">
+      <div class="section-label">The formula</div>
+      <div style="font-size:14px; color:#7a6a52; line-height:1.75;">
+        map position &nbsp;+&nbsp; arrival number &nbsp;=&nbsp; <span style="color:#FFC107; font-family:'JetBrains Mono',monospace">new identity</span>
+        <br><br>
+        The same word at position 1 and position 5 now enters the city differently.
+      </div>
+    </div>
+
+    <div class="intro-nav">
+      <button class="btn-primary" onclick="startGame()">Enter the Bureau →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ GAME ══════════ -->
+<div id="game" class="screen">
+  <div class="game-header">
+    <div class="game-logo">The Census Bureau</div>
+    <div class="progress-dots">
+      <div class="dot current" id="dot-0"></div>
+      <div class="dot" id="dot-1"></div>
+      <div class="dot" id="dot-2"></div>
+    </div>
+    <div class="round-label">Round <span id="round-num">1</span> of 3</div>
+  </div>
+
+  <!-- ─── ROUND 1: THE BAG PROBLEM ─── -->
+  <div id="round1" class="round-section active">
+    <p class="context-text">Travelers registered and mapped. Now they're lined up at the Bureau's gates. Without stamps, here's what the City sees.</p>
+
+    <div class="problem-banner">
+      <div class="problem-banner-label">The problem</div>
+      <div class="problem-banner-text">Same tokens, different meaning. Without position, they're indistinguishable.</div>
+    </div>
+
+    <div class="comparison-grid">
+      <div class="comparison-sentence">
+        <div class="comparison-label">Sentence A</div>
+        <div class="comparison-tokens" id="sent-a-tokens">
+          <div class="ctoken">dog<span class="pos-badge">@1</span></div>
+          <div class="ctoken">bites<span class="pos-badge">@2</span></div>
+          <div class="ctoken">man<span class="pos-badge">@3</span></div>
+        </div>
+      </div>
+      <div class="comparison-vs">↔</div>
+      <div class="comparison-sentence">
+        <div class="comparison-label">Sentence B</div>
+        <div class="comparison-tokens" id="sent-b-tokens">
+          <div class="ctoken">man<span class="pos-badge">@1</span></div>
+          <div class="ctoken">bites<span class="pos-badge">@2</span></div>
+          <div class="ctoken">dog<span class="pos-badge">@3</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="match-indicator" id="match-indicator">
+      <span class="indicator-icon">≡</span>&nbsp; Without position: both sentences look identical to the model
+    </div>
+
+    <div class="divider" style="margin: 20px 0;"></div>
+
+    <div class="scramble-label">Arrange these tokens in the order shown in Sentence A: <strong style="color:#FFC107; font-family:'JetBrains Mono',monospace">dog bites man</strong></div>
+
+    <div class="token-pool" id="token-pool">
+      <!-- populated by JS -->
+    </div>
+
+    <div class="section-label" style="margin-bottom:10px;">Sequence slots — drag tokens here</div>
+    <div class="slots-row" id="slots-row">
+      <!-- populated by JS -->
+    </div>
+
+    <div id="r1-explanation" style="display:none; animation: fadeSlideUp 0.4s ease-out;">
+      <div class="card" style="margin-bottom:12px; font-size:14px; color:#8a7460; line-height:1.75;">
+        Each token now carries its position as part of its identity. "dog" at position 1 and "man" at position 3 have different representations — even before they've looked at any other word in the sentence. The model can now distinguish Sentence A from Sentence B.
+      </div>
+      <div class="insight-card" style="margin-bottom:20px;">
+        <div class="insight-label">The rule</div>
+        <div class="insight-text">Without position encoding, a transformer sees a bag of tokens, not a sequence. Position encoding turns a set into an order.</div>
+      </div>
+      <div style="text-align:right;">
+        <button class="btn-primary" onclick="goRound(2)">Next →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── ROUND 2: ONLY ─── -->
+  <div id="round2" class="round-section">
+    <p class="context-text">The same word at different positions creates different meanings. Watch what happens to "only" as it moves through a sentence.</p>
+
+    <div class="only-sentences" id="only-sentences">
+      <div class="only-sentence-card">
+        <div class="only-sentence-text"><span class="only-word">Only</span> I love her.</div>
+        <div class="only-pos-badge" id="badge-1">position: —</div>
+        <div class="only-meaning" id="meaning-1" style="opacity:0">→ no one else loves her</div>
+      </div>
+      <div class="only-sentence-card">
+        <div class="only-sentence-text">I <span class="only-word">only</span> love her.</div>
+        <div class="only-pos-badge" id="badge-2">position: —</div>
+        <div class="only-meaning" id="meaning-2" style="opacity:0">→ I just love (I don't hate or ignore)</div>
+      </div>
+      <div class="only-sentence-card">
+        <div class="only-sentence-text">I love <span class="only-word">only</span> her.</div>
+        <div class="only-pos-badge" id="badge-3">position: —</div>
+        <div class="only-meaning" id="meaning-3" style="opacity:0">→ no one else is loved</div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:10px; font-size:13px; color:#5a4a35;">
+      Before position encoding, all three instances of "only" produce the <em>same</em> vector — the model can't tell which sentence it's in.
+    </div>
+
+    <div class="minimap-wrap">
+      <svg id="minimap" viewBox="0 0 500 180" xmlns="http://www.w3.org/2000/svg">
+        <!-- Background -->
+        <rect width="500" height="180" fill="#0e0b07"/>
+
+        <!-- Axis guides (very subtle) -->
+        <line x1="50" y1="20" x2="50" y2="165" stroke="#1e160a" stroke-width="1"/>
+        <line x1="50" y1="165" x2="470" y2="165" stroke="#1e160a" stroke-width="1"/>
+        <text x="52" y="175" font-family="Inter" font-size="9" fill="#3a2a18">meaning dimension →</text>
+        <text x="30" y="100" font-family="Inter" font-size="9" fill="#3a2a18" transform="rotate(-90,30,100)">position →</text>
+
+        <!-- Other words on map (context) -->
+        <circle cx="120" cy="80" r="3" fill="#2a2010"/>
+        <text x="126" y="84" font-family="JetBrains Mono" font-size="9" fill="#3a2a18">I</text>
+        <circle cx="200" cy="110" r="3" fill="#2a2010"/>
+        <text x="206" y="114" font-family="JetBrains Mono" font-size="9" fill="#3a2a18">love</text>
+        <circle cx="310" cy="90" r="3" fill="#2a2010"/>
+        <text x="316" y="94" font-family="JetBrains Mono" font-size="9" fill="#3a2a18">her</text>
+
+        <!-- "only" tokens — start clustered, then spread -->
+        <!-- Before encoding: all at same point -->
+        <g id="only-dot-1">
+          <circle id="only-c1" cx="170" cy="95" r="7" fill="#1e160a" stroke="#FFC107" stroke-width="1.5"/>
+          <text id="only-t1" x="170" y="99" text-anchor="middle" font-family="JetBrains Mono" font-size="8" font-weight="600" fill="#FFC107">only</text>
+        </g>
+        <g id="only-dot-2">
+          <circle id="only-c2" cx="170" cy="95" r="7" fill="#1e160a" stroke="#FFC107" stroke-width="1.5" stroke-dasharray="3,2"/>
+          <text id="only-t2" x="170" y="99" text-anchor="middle" font-family="JetBrains Mono" font-size="8" font-weight="600" fill="#FFC107" opacity="0.6">only</text>
+        </g>
+        <g id="only-dot-3">
+          <circle id="only-c3" cx="170" cy="95" r="7" fill="#1e160a" stroke="#FFC107" stroke-width="1.5" stroke-dasharray="1,3"/>
+          <text id="only-t3" x="170" y="99" text-anchor="middle" font-family="JetBrains Mono" font-size="8" font-weight="600" fill="#FFC107" opacity="0.3">only</text>
+        </g>
+
+        <!-- Position labels (hidden initially) -->
+        <text id="pos-label-1" x="95" y="52" font-family="JetBrains Mono" font-size="9" fill="#FFC107" opacity="0">pos 1</text>
+        <text id="pos-label-2" x="163" y="133" font-family="JetBrains Mono" font-size="9" fill="#8a6a30" opacity="0">pos 2</text>
+        <text id="pos-label-3" x="255" y="72" font-family="JetBrains Mono" font-size="9" fill="#6a5020" opacity="0">pos 3</text>
+      </svg>
+    </div>
+
+    <div id="r2-before" style="text-align:center; margin-bottom:12px;">
+      <div style="font-size:12px; color:#5a4a35; margin-bottom:12px;">Three "only" tokens — same point on the map. The model can't distinguish them.</div>
+      <button class="btn-primary" onclick="applyPositionEncoding()">Apply position encoding →</button>
+    </div>
+
+    <div id="r2-after" style="display:none; animation: fadeSlideUp 0.4s ease-out;">
+      <div class="card" style="margin-bottom:12px; font-size:14px; color:#8a7460; line-height:1.75;">
+        The three "only" tokens have diverged. Each now has a unique representation — the same meaning, shifted by a position-specific signal. The model can now tell them apart, and more importantly, can learn that "only" at position 1 behaves differently from "only" at position 3.
+      </div>
+      <div class="insight-card" style="margin-bottom:20px;">
+        <div class="insight-label">The rule</div>
+        <div class="insight-text">Same word. Different position. Different vector. Position encoding means the model doesn't just know what a word is — it knows where it is.</div>
+      </div>
+      <div style="text-align:right;">
+        <button class="btn-primary" onclick="goRound(3)">Next →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── ROUND 3: PARALLEL PARADOX ─── -->
+  <div id="round3" class="round-section">
+    <p class="context-text">Now that every token has its position stamped in, the transformer can do something remarkable: process all of them at the same time.</p>
+
+    <div class="timeline-wrap">
+      <!-- Phase 1: tokens arrive -->
+      <div class="timeline-phase visible" id="phase1">
+        <div class="phase-label" style="color:#5a4a35;">Step 1 — Tokens arrive from the Map Room</div>
+        <div class="phase-tokens">
+          <div class="phase-token raw">dog</div>
+          <div class="phase-token raw">bites</div>
+          <div class="phase-token raw">man</div>
+        </div>
+      </div>
+
+      <div class="phase-connector visible" id="conn1">
+        <div class="connector-line"></div>
+        <div class="connector-label">Position encoding — runs through each token once</div>
+        <div class="connector-line"></div>
+      </div>
+
+      <!-- Phase 2: stamped -->
+      <div class="timeline-phase" id="phase2">
+        <div class="phase-label" style="color:#7a6a52;">Step 2 — Each token receives its position stamp</div>
+        <div class="phase-tokens">
+          <div class="phase-token stamped">dog <div class="pos-stamp">@1</div></div>
+          <div class="phase-token stamped">bites <div class="pos-stamp">@2</div></div>
+          <div class="phase-token stamped">man <div class="pos-stamp">@3</div></div>
+        </div>
+      </div>
+
+      <div class="phase-connector" id="conn2">
+        <div class="connector-line"></div>
+        <div class="connector-label">Attention — all tokens processed simultaneously</div>
+        <div class="connector-line"></div>
+      </div>
+
+      <!-- Phase 3: parallel attention -->
+      <div class="timeline-phase" id="phase3">
+        <div class="phase-label" style="color:#2040a0;">Step 3 — Attention fires on all tokens at once</div>
+        <div class="phase-tokens" id="attention-tokens">
+          <div class="phase-token processing all-at-once">dog@1 <div class="attn-spark">↔ all</div></div>
+          <div class="phase-token processing all-at-once">bites@2 <div class="attn-spark">↔ all</div></div>
+          <div class="phase-token processing all-at-once">man@3 <div class="attn-spark">↔ all</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="paradox-question visible" id="paradox-q">
+      <div class="paradox-q-label">The paradox — now resolved</div>
+      <div class="paradox-q-text">
+        If attention processes everything simultaneously, how does it know word order?
+        <br>
+        It doesn't need to. Order was baked into each token in Step 2 — before the parallel step began.
+        By the time attention runs, every token already carries its position as part of its identity.
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:12px; font-size:14px; color:#8a7460; line-height:1.75;">
+      This is what makes the transformer architecture so powerful. Sequential models (like older RNNs) had to process words one at a time to maintain order. The transformer can process everything at once — because it front-loads the order information into each token's representation.
+    </div>
+
+    <div class="insight-card" style="margin-bottom:20px;">
+      <div class="insight-label">The rule</div>
+      <div class="insight-text">Position encoding makes parallel processing possible. Order is injected upfront so the transformer never needs to read sequentially.</div>
+    </div>
+
+    <div style="text-align:right;">
+      <button class="btn-primary" onclick="showScreen('closing')">What this means →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ CLOSING ══════════ -->
+<div id="closing" class="screen">
+  <div style="padding: 40px 0; max-width: 600px; margin: 0 auto;">
+    <div class="eyebrow" style="text-align:center">Level 3 Complete</div>
+    <h1 class="big-title" style="text-align:center; margin-bottom:8px;">The Census Bureau</h1>
+    <div class="divider"></div>
+
+    <div class="closing-section">
+      <div class="closing-section-label">What you discovered</div>
+      <div class="closing-text">
+        The transformer reads everything at once — but only because position was stamped into each token first. Without positional encoding, "dog bites man" and "man bites dog" would be indistinguishable. With it, every token carries its sequence number as part of its identity, blended directly into its vector.
+        <br><br>
+        The same word at different positions creates different representations before any context-gathering happens. "only" at position 1 is already a different vector than "only" at position 3 — even before attention has run a single step.
+      </div>
+    </div>
+
+    <div class="closing-section" style="margin-top:20px;">
+      <div class="closing-section-label">Where things stand</div>
+      <div class="closing-text">
+        Each token now has: a semantic position from the Map Room, a sequence position from the Census Bureau. They've been combined into a single starting vector. The token knows what it is and where it sits.
+        <br><br>
+        But it still doesn't know its context — it hasn't spoken to any of its neighbors yet. "bank" still has the same starting vector whether the next word is "river" or "deposit."
+      </div>
+    </div>
+
+    <div class="teaser-card">
+      <div class="teaser-label">To be continued</div>
+      <div class="teaser-text">
+        Now that every token is positioned, the sequence is ready for the city's main event: the Town Square, where every token gets to look at every other token simultaneously and update its understanding based on what it finds.
+        <br><br>
+        That's where "bank" finally learns whether it's near a river or a vault. That's Level 4.
+      </div>
+    </div>
+
+    <div style="display:flex; gap:12px; justify-content:center; margin-top: 8px;">
+      <button class="btn-primary" onclick="showScreen('intro')">← Back to start</button>
+      <button class="btn-ghost" onclick="startGame()">Play again</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ══════ DATA ══════ */
+
+const TOKENS_R1 = [
+  { word: 'dog',   color: '#2a4a20', correctSlot: 0 },
+  { word: 'bites', color: '#1a2a4a', correctSlot: 1 },
+  { word: 'man',   color: '#4a3a10', correctSlot: 2 },
+];
+
+// Target positions for the "only" mini-map divergence
+const ONLY_TARGETS = [
+  { cx: 100, cy: 50  }, // pos 1 — upper left (subject area)
+  { cx: 170, cy: 130 }, // pos 2 — lower center (verb area)
+  { cx: 265, cy: 60  }, // pos 3 — upper right (object area)
+];
+const ONLY_START = { cx: 170, cy: 95 };
+
+/* ══════ STATE ══════ */
+
+let slotContents   = [null, null, null];
+let draggingWord   = null;
+let draggingColor  = null;
+let r2Applied      = false;
+let r3Revealed     = false;
+
+/* ══════ ENTRY ══════ */
+
+function startGame() {
+  slotContents = [null, null, null];
+  r2Applied    = false;
+  r3Revealed   = false;
+  resetRound1();
+  resetRound2();
+  resetRound3();
+  showScreen('game');
+  goRound(1);
+}
+
+/* ══════ ROUND NAVIGATION ══════ */
+
+function goRound(n) {
+  document.getElementById('round-num').textContent = n;
+  ['round1','round2','round3'].forEach((id, i) => {
+    document.getElementById(id).classList.toggle('active', i + 1 === n);
+    const dot = document.getElementById(`dot-${i}`);
+    dot.className = 'dot' + (i + 1 < n ? ' done' : i + 1 === n ? ' current' : '');
+  });
+  window.scrollTo(0, 0);
+}
+
+/* ══════ ROUND 1: SCRAMBLE ══════ */
+
+function resetRound1() {
+  slotContents = [null, null, null];
+  document.getElementById('r1-explanation').style.display = 'none';
+  document.getElementById('match-indicator').className = 'match-indicator';
+  document.getElementById('match-indicator').innerHTML =
+    '<span class="indicator-icon">≡</span>&nbsp; Without position: both sentences look identical to the model';
+
+  // Reset comparison tokens
+  document.querySelectorAll('#sent-a-tokens .ctoken, #sent-b-tokens .ctoken').forEach(el => {
+    el.classList.remove('with-pos');
+  });
+
+  // Render token pool
+  const pool = document.getElementById('token-pool');
+  const shuffled = [...TOKENS_R1].sort(() => Math.random() - 0.5);
+  pool.innerHTML = shuffled.map(t =>
+    `<div class="draggable-token" id="pool-${t.word}" onmousedown="startTokenDrag(event,'${t.word}','${t.color}')">
+      <div class="token-meaning-bar" style="background:${t.color}"></div>
+      ${t.word}
+    </div>`
+  ).join('');
+
+  // Render slots
+  const slotsRow = document.getElementById('slots-row');
+  slotsRow.innerHTML = [0,1,2].map(i =>
+    `<div class="slot" id="slot-${i}" data-index="${i}">
+      <div class="slot-number">${i+1}</div>
+      <div class="slot-content" id="slot-content-${i}"></div>
+    </div>`
+  ).join('');
+}
+
+function startTokenDrag(e, word, color) {
+  e.preventDefault();
+  draggingWord  = word;
+  draggingColor = color;
+
+  const ghost = document.getElementById('drag-ghost');
+  document.getElementById('ghost-word').textContent = word;
+  document.getElementById('ghost-bar').style.background = color;
+  ghost.style.display = 'block';
+  ghost.style.left = e.clientX + 'px';
+  ghost.style.top  = e.clientY + 'px';
+
+  const poolEl = document.getElementById(`pool-${word}`);
+  if (poolEl) poolEl.classList.add('dragging');
+
+  // Highlight slots
+  document.querySelectorAll('.slot').forEach(s => {
+    if (!slotContents[+s.dataset.index]) s.style.borderColor = '#5a4a35';
+  });
+
+  function onMove(ev) {
+    ghost.style.left = ev.clientX + 'px';
+    ghost.style.top  = ev.clientY + 'px';
+    document.querySelectorAll('.slot').forEach(s => {
+      const r = s.getBoundingClientRect();
+      const over = ev.clientX >= r.left && ev.clientX <= r.right &&
+                   ev.clientY >= r.top  && ev.clientY <= r.bottom;
+      if (!slotContents[+s.dataset.index]) {
+        s.classList.toggle('over', over);
+      }
+    });
+  }
+
+  function onUp(ev) {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    ghost.style.display = 'none';
+    if (poolEl) poolEl.classList.remove('dragging');
+    document.querySelectorAll('.slot').forEach(s => {
+      s.classList.remove('over');
+      s.style.borderColor = '';
+    });
+
+    // Find slot under cursor
+    let dropped = false;
+    document.querySelectorAll('.slot').forEach(s => {
+      const r = s.getBoundingClientRect();
+      if (ev.clientX >= r.left && ev.clientX <= r.right &&
+          ev.clientY >= r.top  && ev.clientY <= r.bottom) {
+        const idx = +s.dataset.index;
+        if (slotContents[idx] === null) {
+          placeInSlot(idx, word, color);
+          dropped = true;
+        }
+      }
+    });
+
+    draggingWord  = null;
+    draggingColor = null;
+  }
+
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+}
+
+function placeInSlot(idx, word, color) {
+  slotContents[idx] = word;
+
+  const slot = document.getElementById(`slot-${idx}`);
+  slot.classList.add('filled');
+  document.getElementById(`slot-content-${idx}`).innerHTML =
+    `<div style="display:flex;align-items:center;gap:6px;">
+      <div class="token-meaning-bar" style="background:${color};height:20px;width:3px;border-radius:2px;"></div>
+      <span>${word}</span>
+      <span class="slot-pos-badge">pos ${idx+1}</span>
+    </div>
+    <span class="slot-return" onclick="returnFromSlot(${idx},'${word}')">✕</span>`;
+
+  // Mark pool token as used
+  const poolEl = document.getElementById(`pool-${word}`);
+  if (poolEl) poolEl.classList.add('used');
+
+  checkAllSlotsFilled();
+}
+
+function returnFromSlot(idx, word) {
+  slotContents[idx] = null;
+  const slot = document.getElementById(`slot-${idx}`);
+  slot.classList.remove('filled');
+  document.getElementById(`slot-content-${idx}`).innerHTML = '';
+  const poolEl = document.getElementById(`pool-${word}`);
+  if (poolEl) poolEl.classList.remove('used');
+  document.getElementById('r1-explanation').style.display = 'none';
+}
+
+function checkAllSlotsFilled() {
+  if (slotContents.some(s => s === null)) return;
+
+  // Check if correct
+  const correct = slotContents.every((w, i) => w === TOKENS_R1[i].word);
+
+  // Animate comparison panel
+  setTimeout(() => {
+    document.querySelectorAll('#sent-a-tokens .ctoken, #sent-b-tokens .ctoken').forEach(el => {
+      el.classList.add('with-pos');
+    });
+    const indicator = document.getElementById('match-indicator');
+    indicator.className = 'match-indicator resolved';
+    indicator.innerHTML = '<span class="indicator-icon">≠</span>&nbsp; With position encoding: Sentence A and Sentence B are now distinguishable';
+    document.getElementById('r1-explanation').style.display = 'block';
+  }, 400);
+}
+
+/* ══════ ROUND 2: ONLY ══════ */
+
+function resetRound2() {
+  r2Applied = false;
+  document.getElementById('r2-before').style.display = 'block';
+  document.getElementById('r2-after').style.display  = 'none';
+
+  ['1','2','3'].forEach(n => {
+    const badge   = document.getElementById(`badge-${n}`);
+    const meaning = document.getElementById(`meaning-${n}`);
+    badge.textContent = 'position: —';
+    badge.className = 'only-pos-badge';
+    meaning.style.opacity = '0';
+  });
+
+  // Reset minimap dots
+  const targets = [
+    { id:1, cx: ONLY_START.cx, cy: ONLY_START.cy },
+    { id:2, cx: ONLY_START.cx, cy: ONLY_START.cy },
+    { id:3, cx: ONLY_START.cx, cy: ONLY_START.cy },
+  ];
+  targets.forEach(t => {
+    const c = document.getElementById(`only-c${t.id}`);
+    const tx = document.getElementById(`only-t${t.id}`);
+    if (c) { c.setAttribute('cx', t.cx); c.setAttribute('cy', t.cy); }
+    if (tx) { tx.setAttribute('x', t.cx); tx.setAttribute('y', t.cy + 4); }
+    const pl = document.getElementById(`pos-label-${t.id}`);
+    if (pl) pl.setAttribute('opacity', '0');
+  });
+}
+
+function applyPositionEncoding() {
+  if (r2Applied) return;
+  r2Applied = true;
+
+  const posLabels  = ['position: 1', 'position: 2', 'position: 3'];
+  const meanings   = [1, 2, 3];
+  const dotColors  = ['#FFC107', '#8a7030', '#6a5828'];
+
+  // Animate badges and meanings
+  meanings.forEach((n, i) => {
+    setTimeout(() => {
+      const badge = document.getElementById(`badge-${n}`);
+      badge.textContent = posLabels[i];
+      badge.classList.add('encoded');
+      document.getElementById(`meaning-${n}`).style.opacity = '1';
+    }, i * 200);
+  });
+
+  // Animate minimap dots diverging
+  ONLY_TARGETS.forEach((target, i) => {
+    setTimeout(() => {
+      const id = i + 1;
+      const c  = document.getElementById(`only-c${id}`);
+      const tx = document.getElementById(`only-t${id}`);
+      const pl = document.getElementById(`pos-label-${id}`);
+
+      if (c) {
+        c.style.transition = 'cx 0.6s ease-out, cy 0.6s ease-out';
+        c.setAttribute('cx', target.cx);
+        c.setAttribute('cy', target.cy);
+        c.setAttribute('stroke', dotColors[i]);
+      }
+      if (tx) {
+        tx.style.transition = 'x 0.6s ease-out, y 0.6s ease-out';
+        tx.setAttribute('x', target.cx);
+        tx.setAttribute('y', target.cy + 4);
+        tx.setAttribute('fill', dotColors[i]);
+        tx.setAttribute('opacity', '1');
+      }
+      if (pl) {
+        setTimeout(() => pl.setAttribute('opacity','1'), 500);
+      }
+    }, i * 180);
+  });
+
+  setTimeout(() => {
+    document.getElementById('r2-before').style.display = 'none';
+    document.getElementById('r2-after').style.display  = 'block';
+  }, ONLY_TARGETS.length * 180 + 700);
+}
+
+/* ══════ ROUND 3: PARALLEL ══════ */
+
+function resetRound3() {
+  r3Revealed = false;
+  // Animate phases in sequence on first view
+  ['phase2','phase3','conn2'].forEach(id => {
+    document.getElementById(id).classList.remove('visible');
+  });
+}
+
+function revealParallelPhases() {
+  if (r3Revealed) return;
+  r3Revealed = true;
+  setTimeout(() => document.getElementById('phase2').classList.add('visible'), 300);
+  setTimeout(() => document.getElementById('conn2').classList.add('visible'), 900);
+  setTimeout(() => document.getElementById('phase3').classList.add('visible'), 1400);
+}
+
+/* ══════ UTILITIES ══════ */
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+
+  // Auto-reveal Round 3 phases when it becomes visible
+  if (id === 'game') return;
+}
+
+// Trigger phase reveal when round 3 becomes active
+const _goRound = goRound;
+goRound = function(n) {
+  _goRound(n);
+  if (n === 3) setTimeout(revealParallelPhases, 400);
+};
+</script>
+  <div class="mc-hotbar">
+    <a href="the-gate.html" class="mc-hotbar-slot">
+      <div class="mc-hotbar-num">1</div>
+      <div class="mc-hotbar-label">Gate</div>
+    </a>
+    <a href="the-map-room.html" class="mc-hotbar-slot">
+      <div class="mc-hotbar-num">2</div>
+      <div class="mc-hotbar-label">Map</div>
+    </a>
+    <a href="javascript:void(0)" class="mc-hotbar-slot current">
+      <div class="mc-hotbar-num">3</div>
+      <div class="mc-hotbar-label">Bureau</div>
+    </a>
+    <a href="the-town-square.html" class="mc-hotbar-slot future">
+      <div class="mc-hotbar-num">4</div>
+      <div class="mc-hotbar-label">Square</div>
+    </a>
+    <a href="the-thread.html" class="mc-hotbar-slot future">
+      <div class="mc-hotbar-num">5</div>
+      <div class="mc-hotbar-label">Thread</div>
+    </a>
+    <a href="the-library.html" class="mc-hotbar-slot future">
+      <div class="mc-hotbar-num">6</div>
+      <div class="mc-hotbar-label">Library</div>
+    </a>
+    <a href="the-tower.html" class="mc-hotbar-slot future">
+      <div class="mc-hotbar-num">7</div>
+      <div class="mc-hotbar-label">Tower</div>
+    </a>
+    <a href="the-oracle.html" class="mc-hotbar-slot future">
+      <div class="mc-hotbar-num">8</div>
+      <div class="mc-hotbar-label">Oracle</div>
+    </a>
+  </div>
+</body>
+</html>

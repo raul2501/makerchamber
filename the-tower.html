@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Tower — Level 7: Layer Stacking</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Fraunces:opsz,wght@9..144,300;9..144,600&family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #2C2C2C; color: #FFFFFF; font-family: 'Inter', sans-serif; min-height: 100vh; display: flex; align-items: center; flex-direction: column; padding: 24px 16px; }
+.screen { display: none; width: 100%; max-width: 860px; }
+.screen.active { display: block; }
+.eyebrow { font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: 2px; text-transform: uppercase; color: #CCCCCC; margin-bottom: 18px; line-height: 2; }
+.big-title { font-family: 'Fraunces', serif; font-size: 56px; font-weight: 300; color: #FFC107; line-height: 1; }
+.divider { width: 100%; height: 2px; background: repeating-linear-gradient(90deg, #4A4A4A 0px, #4A4A4A 8px, transparent 8px, transparent 12px); margin: 20px 0; border: none; }
+.section-label { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: 1px; text-transform: uppercase; color: #AAAAAA; margin-bottom: 10px; line-height: 2; }
+.card { background: #5D5D5D; border-top: 3px solid #9A9A9A; border-left: 3px solid #9A9A9A; border-bottom: 3px solid #1A1A1A; border-right: 3px solid #1A1A1A; border-radius: 0; padding: 16px 20px; box-shadow: inset 2px 2px 0 #7A7A7A, inset -2px -2px 0 #1A1A1A; }
+.insight-card { background: #1E3D1E; border-top: 3px solid #4A8A4A; border-left: 3px solid #4A8A4A; border-bottom: 3px solid #0A1A0A; border-right: 3px solid #0A1A0A; border-radius: 0; padding: 14px 18px; box-shadow: inset 1px 1px 0 #3A6A2A; }
+.insight-label { font-family: 'Press Start 2P', monospace; font-size: 7px; letter-spacing: 1px; text-transform: uppercase; color: #80C840; margin-bottom: 8px; line-height: 2; }
+.insight-text { font-size: 13px; color: #80FF20; line-height: 1.6; }
+.btn-primary { display: inline-block; padding: 13px 26px; background: #5D8733; color: #FFFFFF; border: none; border-bottom: 4px solid #2A5A18; border-right: 4px solid #2A5A18; border-top: 4px solid #8DB360; border-left: 4px solid #8DB360; font-family: 'Press Start 2P', monospace; font-size: 9px; font-weight: 400; cursor: pointer; border-radius: 0; transition: none; letter-spacing: 0.5px; }
+.btn-primary:hover { background: #6B9E38; transform: none; } .btn-primary:active { border-top-color: #2A5A18; border-left-color: #2A5A18; border-bottom-color: #8DB360; border-right-color: #8DB360; }
+.btn-primary:disabled { background: #3A3A3A; color: #666666; cursor: not-allowed; border-color: #2A2A2A; border-radius: 0; }
+.btn-ghost { display: inline-block; padding: 12px 22px; background: #4A4A4A; color: #CCCCCC; border: 2px solid #555555; font-family: 'Press Start 2P', monospace; font-size: 8px; cursor: pointer; border-radius: 0; transition: all 0.15s; letter-spacing: 0.5px; }
+.btn-ghost:hover { border-color: #FFC107; color: #FFC107; background: #6A6A6A; }
+.intro-wrap { padding: 48px 0; text-align: center; }
+.intro-body { max-width: 520px; margin: 0 auto 16px; color: #DDDDDD; font-size: 15px; line-height: 1.85; }
+.intro-nav { display: flex; justify-content: center; gap: 12px; margin-top: 36px; }
+.game-wrap { padding: 16px 0 40px; }
+.game-header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 16px; border-bottom: 2px solid #3A3A3A; margin-bottom: 24px; }
+.game-logo { font-family: 'Press Start 2P', monospace; font-size: 10px; color: #FFC107; letter-spacing: 1px; }
+.progress-dots { display: flex; gap: 2px; background: #0A1600; border: 2px solid #1A3300; border-radius: 0; padding: 3px; }
+.dot { width: 22px; height: 10px; border-radius: 0; border: none; background: #142800; transition: background 0.2s; }
+.dot.done { background: #80FF20; box-shadow: inset 0 1px 0 rgba(255,255,255,0.3); }
+.dot.current { background: #3A8800; box-shadow: inset 0 1px 0 rgba(255,255,255,0.15); }
+.context-note { font-size: 13px; color: #CCCCCC; font-style: italic; padding-left: 12px; border-left: 3px solid #5D8733; margin-bottom: 18px; line-height: 1.65; }
+.closing-links { display: flex; gap: 12px; justify-content: center; margin-top: 32px; }
+
+/* Floor display */
+.floor-track { display: flex; flex-direction: column; gap: 0; margin-bottom: 24px; }
+.floor-item {
+  display: flex; gap: 16px; align-items: flex-start;
+  padding: 16px 0; border-bottom: 1px solid #1a1408;
+  opacity: 0.35; transition: opacity 0.4s;
+}
+.floor-item.active { opacity: 1; }
+.floor-item.visited { opacity: 0.7; }
+.floor-num-col { width: 40px; flex-shrink: 0; text-align: center; padding-top: 2px; }
+.floor-num { font-family: 'Fraunces', serif; font-size: 28px; font-weight: 300; color: #FFC107; line-height: 1; }
+.floor-label-sm { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: #AAAAAA; }
+.floor-content { flex: 1; }
+.floor-name { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 300; color: #FFC107; margin-bottom: 4px; }
+.floor-tagline { font-size: 12px; color: #CCCCCC; margin-bottom: 10px; font-style: italic; }
+
+/* Mechanisms box */
+.mechanism-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.mechanism-box { padding: 10px 12px; border-radius: 0; }
+.mechanism-box.att { background: #2A1A1A; border: 1px solid #6A2A2A; }
+.mechanism-box.ffn { background: #1E3D1E; border: 1px solid #2A4A2A; }
+.mechanism-title { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px; }
+.mechanism-box.att .mechanism-title { color: #d44a4a; }
+.mechanism-box.ffn .mechanism-title { color: #5D8733; }
+.mechanism-text { font-size: 12px; color: #DDDDDD; line-height: 1.5; }
+
+/* Probe */
+.probe-section { background: #0d0806; border: 1px solid #3A3A3A; border-radius: 0; padding: 14px 16px; }
+.probe-question { font-size: 14px; color: #c0b090; margin-bottom: 10px; font-style: italic; }
+.probe-options { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.probe-opt {
+  padding: 10px 14px; border-radius: 0; cursor: pointer; font-size: 13px;
+  border: 1px solid #3A3A3A; background: #5D5D5D; color: #DDDDDD;
+  transition: all 0.15s; text-align: left;
+}
+.probe-opt:hover { border-color: #FFC107; color: #FFC107; }
+.probe-opt.correct { background: #1E3D1E; border-color: #5D8733; color: #5D8733; }
+.probe-opt.wrong { background: #180808; border-color: #c04040; color: #c04040; }
+.probe-opt:disabled, .probe-opt.disabled { pointer-events: none; opacity: 0.5; }
+.probe-feedback { font-size: 13px; line-height: 1.6; display: none; margin-top: 8px; padding: 10px 12px; border-radius: 0; }
+.probe-feedback.correct { background: #1E3D1E; border: 1px solid #2A4A2A; color: #5D8733; }
+.probe-feedback.wrong { background: #180808; border: 1px solid #4a1a1a; color: #c08080; }
+
+/* Representation bar */
+.rep-bar-section { margin: 10px 0; }
+.rep-bar-label { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: #CCCCCC; margin-bottom: 4px; }
+.rep-bar { height: 8px; background: #4A4A4A; border-radius: 4px; overflow: hidden; }
+.rep-fill { height: 100%; border-radius: 4px; transition: width 0.7s ease; }
+
+/* Floor connector */
+.floor-connector { width: 2px; height: 24px; background: linear-gradient(#2a1f10, #1a1408); margin: 0 auto; }
+
+/* Minecraft hotbar */
+.mc-hotbar {
+  display: flex; gap: 4px; justify-content: center;
+  padding: 20px 0 4px;
+}
+.mc-hotbar-slot {
+  width: 50px; height: 50px;
+  background: #8B8B8B;
+  border-top: 3px solid #C6C6C6; border-left: 3px solid #C6C6C6;
+  border-bottom: 3px solid #373737; border-right: 3px solid #373737;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-decoration: none; cursor: pointer; position: relative;
+  transition: none;
+}
+.mc-hotbar-slot.current {
+  background: #9A9A9A;
+  border-top-color: #FFFFFF; border-left-color: #FFFFFF;
+  border-bottom-color: #FFFFFF; border-right-color: #FFFFFF;
+  box-shadow: 0 0 0 2px #FFC107;
+}
+.mc-hotbar-slot.future {
+  background: #5A5A5A;
+  border-top-color: #8A8A8A; border-left-color: #8A8A8A;
+  border-bottom-color: #1A1A1A; border-right-color: #1A1A1A;
+  opacity: 0.6;
+}
+.mc-hotbar-num {
+  font-family: 'Press Start 2P', monospace; font-size: 7px;
+  color: #FFFFFF; text-shadow: 1px 1px #000;
+  position: absolute; top: 3px; right: 5px;
+}
+.mc-hotbar-label {
+  font-family: 'Press Start 2P', monospace; font-size: 5px;
+  color: #FFFFFF; text-shadow: 1px 1px #000;
+  margin-top: 2px; text-align: center; line-height: 1.4;
+  padding: 0 2px;
+}
+.mc-hotbar-slot.current .mc-hotbar-label { color: #FFC107; }
+
+</style>
+</head>
+<body>
+
+<!-- INTRO -->
+<div id="intro" class="screen active">
+  <div class="intro-wrap">
+    <p class="eyebrow">Level 07 / Layer Stacking</p>
+    <h1 class="big-title">The Tower</h1>
+    <div class="divider"></div>
+    <p class="intro-body">The full block — attention, residual, FFN, residual — doesn't run once. It repeats across every floor.</p>
+    <p class="intro-body">Each floor refines the representation further. The same token at floor 1 and floor 12 looks almost unrecognizable. It enters as a word. It exits as a thought.</p>
+    <p class="intro-body" style="font-size:13px;color:#5a4a35;">At each floor, you'll see what attention and FFN are doing, then answer a probe: what can be decoded from bank's representation here? The probe tells you what the floor added.</p>
+    <div class="intro-nav">
+      <button class="btn-primary" onclick="show('floors');initFloors()">Enter the Tower →</button>
+    </div>
+  </div>
+</div>
+
+<!-- FLOORS -->
+<div id="floors" class="screen">
+  <div class="game-wrap">
+    <div class="game-header">
+      <div class="game-logo">The Tower</div>
+      <div class="progress-dots" id="floorDots"></div>
+      <div style="font-size:12px;color:#4a3a28;" id="floorProgress">Floor 1 of 4</div>
+    </div>
+
+    <p style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#5a4a35;margin-bottom:18px;">Following: <span style="color:#FFC107;">bank</span> in "After the flood, the bank eroded along the muddy shore."</p>
+
+    <div class="floor-track" id="floorTrack"></div>
+
+    <div style="text-align:center;margin-top:4px;">
+      <button class="btn-primary" id="nextFloorBtn" onclick="nextFloor()" disabled style="display:none;">Next floor →</button>
+      <button class="btn-primary" id="finishBtn" onclick="show('closing')" style="display:none;">Exit the Tower →</button>
+    </div>
+  </div>
+</div>
+
+<!-- CLOSING -->
+<div id="closing" class="screen">
+  <div class="intro-wrap">
+    <p class="eyebrow">Level 07 — Complete</p>
+    <h1 class="big-title">A Thought</h1>
+    <div class="divider"></div>
+    <div class="card" style="max-width:560px;margin:0 auto 16px;text-align:left;">
+      <div class="section-label" style="margin-bottom:10px;">What depth does</div>
+      <p style="font-size:14px;color:#8a7460;line-height:1.75;margin-bottom:10px;">Each layer adds a layer of interpretation. Early floors handle surface features — grammar, word type, punctuation relationships. Middle floors handle semantics — word sense, entity type, domain. Late floors handle abstraction — role in context, reasoning, long-range dependencies.</p>
+      <p style="font-size:14px;color:#8a7460;line-height:1.75;">By floor 12 (or 32, or 96), "bank" isn't really "bank" anymore. It's a high-level representation of a natural boundary feature in an erosion event — the specific role this token plays in this specific sentence.</p>
+    </div>
+    <div class="insight-card" style="max-width:560px;margin:0 auto 20px;text-align:left;">
+      <div class="insight-label">What comes next</div>
+      <div class="insight-text">After all the floors, the last token in the sequence must speak. Its final representation — the sum of everything that happened across every layer — gets projected back onto the vocabulary. Every token gets a probability. One gets sampled. Level 8: The Oracle.</div>
+    </div>
+    <div class="closing-links">
+      <button class="btn-ghost" onclick="show('intro')">← Replay</button>
+      <a href="the-oracle.html"><button class="btn-primary">The Oracle →</button></a>
+    </div>
+  </div>
+</div>
+
+<script>
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+const FLOORS = [
+  {
+    num: 1,
+    name: 'Surface Patterns',
+    tagline: 'Grammar, syntax, punctuation',
+    att: {
+      title: 'What attention does here',
+      text: 'Early attention heads track local relationships: which words are adjacent, what punctuation structures the clause, what basic syntactic links exist. At floor 1, heads primarily notice that "bank" follows "the" and precedes "eroded" — the most immediate grammatical neighbors.',
+      why: 'These heads exist because early layers of transformers reliably encode shallow syntactic features. Probing studies show that part-of-speech information peaks in layer 1–2 of models like BERT. The attention weight matrices learned, through training on billions of examples, to group grammatically similar contexts.'
+    },
+    ffn: {
+      title: 'What FFN retrieves here',
+      text: 'The FFN at floor 1 matches "bank" against basic morphological and part-of-speech patterns. At this point the context is thin — mostly grammatical signal. The Library returns: noun, common word, multiple meanings possible.',
+      why: 'FFN circuits in early layers encode token-level features: word frequency, rough category (noun/verb/adj), common inflections. These are shallow pattern matches that don\'t require much context to fire.'
+    },
+    probe: {
+      q: 'After floor 1, what can be decoded from bank\'s representation?',
+      options: [
+        { text: 'bank is a noun', correct: true },
+        { text: 'bank refers to a riverbank', correct: false },
+        { text: 'bank will be associated with erosion', correct: false },
+        { text: 'bank is in a financial context', correct: false },
+      ],
+      correctFeedback: 'Correct. Floor 1 encodes basic grammatical information — word type, local neighbors, syntactic position. Semantic disambiguation (which meaning of bank?) hasn\'t happened yet. That requires context to flow in from surrounding tokens, which takes more layers.',
+      wrongFeedback: 'Not quite. Floor 1 is still shallow. The attention at this level sees only nearby grammatical relationships — "the" before, "eroded" after. That\'s enough to identify word type (noun), but not enough to disambiguate meaning or semantic role. That comes later.'
+    },
+    rep: { grammar: 0.9, wordSense: 0.1, semanticRole: 0.0, abstractCtx: 0.0 }
+  },
+  {
+    num: 2,
+    name: 'Word Sense',
+    tagline: 'Disambiguation and semantic category',
+    att: {
+      title: 'What attention does here',
+      text: 'By floor 2, attention heads begin looking further — past the immediate neighbors to the broader clause. "bank" can now attend to "flood" (3 positions back) and "eroded" (2 positions ahead) simultaneously. The Q/K/V matrices at this floor were trained to score "flood" as highly relevant to "bank"\'s query.',
+      why: 'Middle-layer attention heads specialize in word sense disambiguation (WSD). This has been documented in research — heads in layers 2–4 of BERT reliably pick out the correct sense of polysemous words by attending to disambiguating context. The model learned this because supervised and unsupervised pretraining created implicit WSD signal in the weights.'
+    },
+    ffn: {
+      title: 'What FFN retrieves here',
+      text: 'With stronger context now in the representation, the FFN starts retrieving domain-level knowledge. "bank" carrying "flood" signal now activates patterns for natural waterways, geography, and erosion — rather than the financial patterns that would fire for "bank" in a loan context.',
+      why: 'FFN circuits at floor 2 encode entity type and semantic category information — whether something is a physical object, an institution, an abstract concept. These circuits learned, through training, that the co-occurrence of "bank" with "flood" is strongly associated with the natural-world sense.'
+    },
+    probe: {
+      q: 'After floor 2, what additional information can be decoded from bank?',
+      options: [
+        { text: 'bank is in a financial context', correct: false },
+        { text: 'bank refers to something in the natural world', correct: true },
+        { text: 'bank is the grammatical object of the sentence', correct: false },
+        { text: 'bank will be followed by a number', correct: false },
+      ],
+      correctFeedback: 'Right. By floor 2, enough context has flowed in for word sense disambiguation. "flood," "eroded," "muddy," and "shore" are all semantically consistent with a natural waterway — the model has seen this co-occurrence pattern billions of times. The financial sense of "bank" is now deprioritized in the representation.',
+      wrongFeedback: 'Not this one. By floor 2, attention has reached "flood" and "eroded" — and those signals strongly suggest the natural-world reading of "bank." The financial sense is still somewhat present in the residual stream, but the nature-domain vectors are now dominant.'
+    },
+    rep: { grammar: 0.9, wordSense: 0.75, semanticRole: 0.15, abstractCtx: 0.0 }
+  },
+  {
+    num: 3,
+    name: 'Semantic Role',
+    tagline: 'Who does what to whom',
+    att: {
+      title: 'What attention does here',
+      text: 'Floor 3 attention heads track structural roles across the full clause. "bank" now attends to "eroded" not just as a neighbor but as its predicate — the verb describing what happens to it. Heads at this level encode subject-verb-object structure. "bank" is learning that it is the thing being eroded, not the agent doing something.',
+      why: 'Semantic role labeling (SRL) emerges in middle-to-late attention layers. Research probing BERT layers shows that argument structure (who is the agent vs. the patient) peaks around layers 4–8. The Q/K/V weights at this floor were shaped by training on tasks that required understanding who does what to whom — reading comprehension, textual entailment, co-reference resolution all push these representations to develop.'
+    },
+    ffn: {
+      title: 'What FFN retrieves here',
+      text: 'The FFN now has a rich context to match against: noun + natural entity + subject + patient of erosion + waterway domain. Patterns fire for: boundary features, shoreline structures, geomorphological processes. The Library is now retrieving conceptually specific knowledge about how riverbanks behave physically.',
+      why: 'Later-floor FFN circuits store more abstract and compositional knowledge — not just "bank is a noun" but "bank-in-this-context is a physical entity that undergoes change from environmental forces." These circuits are believed to encode relational facts that require multiple-layer processing to properly activate.'
+    },
+    probe: {
+      q: 'After floor 3, what can be decoded that wasn\'t available at floor 2?',
+      options: [
+        { text: 'bank is a noun', correct: false },
+        { text: 'bank is the thing being eroded, not the agent of action', correct: true },
+        { text: 'bank appears in position 6', correct: false },
+        { text: 'bank co-occurs with "flood"', correct: false },
+      ],
+      correctFeedback: 'Correct. Semantic role — the patient of erosion, the thing being acted on — emerges at floor 3. "bank" now carries information about its grammatical and semantic role in this specific event structure: it is a physical feature undergoing change, not an agent doing something. This kind of structured role information requires attending to the full clause pattern, not just adjacent words.',
+      wrongFeedback: 'That information was already present at an earlier floor. Floor 3 adds something new: the semantic role — specifically that "bank" is the thing being eroded (the patient), not the eroder (the agent). This requires the model to have processed the full clause structure and understood the predicate-argument relationship.'
+    },
+    rep: { grammar: 0.9, wordSense: 0.90, semanticRole: 0.80, abstractCtx: 0.2 }
+  },
+  {
+    num: 4,
+    name: 'Abstract Context',
+    tagline: 'Full contextual role — ready for prediction',
+    att: {
+      title: 'What attention does here',
+      text: 'Late attention heads attend across the full sentence and beyond — connecting "bank" to the entire discourse frame. At this floor, "bank" attends to "after the flood" as an event structure, not just individual words. It understands that this sentence describes the aftermath of a natural disaster affecting a physical landscape feature.',
+      why: 'Late-layer attention heads are associated with abstract, discourse-level reasoning. Research shows that co-reference resolution, long-range syntactic agreement, and high-level semantic compositionality emerge in the final layers. At this point, the Q/K/V matrices have learned to encode full event representations rather than pairwise token relationships.'
+    },
+    ffn: {
+      title: 'What FFN retrieves here',
+      text: 'The FFN at the final floor has the most abstract and specific pattern available: "riverbank as the subject of erosion in a flood event." Patterns fire for: floodplain geomorphology, post-flood landscape change, sediment transport. The retrieved knowledge is now highly contextualized — not just facts about banks, but facts relevant to this specific type of scenario.',
+      why: 'Top-layer FFN circuits are believed to store the most compositional and task-specific knowledge. They fire on complex, context-dependent patterns that require the full processing pipeline to have run first. This is consistent with the "superposition" hypothesis — later layers pack more task-relevant information into the same dimensional space.'
+    },
+    probe: {
+      q: 'After floor 4 (the final floor), what does bank\'s representation encode?',
+      options: [
+        { text: 'Just the word "bank" and its part of speech', correct: false },
+        { text: 'The general concept of something in the natural world', correct: false },
+        { text: 'A riverbank undergoing physical erosion in a flood event — full contextual role', correct: true },
+        { text: 'A financial institution in a lending scenario', correct: false },
+      ],
+      correctFeedback: 'Exactly right. The final representation of "bank" is not just the word, not just the concept of a natural waterway, but the specific role of a riverbank in this particular event — a physical landscape feature being worn away by floodwater. This specificity is what makes the final representation useful for prediction: the model can now generate a contextually accurate next token from this rich, layered understanding.',
+      wrongFeedback: 'By floor 4, bank\'s representation has accumulated four floors of context. It\'s not just a word or a category — it\'s a fully contextualized representation of a specific role in a specific event. The final layer encodes: natural physical feature + subject of erosion + flood event context + geomorphological domain. From this, the prediction layer can accurately complete the sentence.'
+    },
+    rep: { grammar: 0.9, wordSense: 0.95, semanticRole: 0.92, abstractCtx: 0.90 }
+  }
+];
+
+let currentFloor = 0;
+let floorAnswered = [];
+
+function initFloors() {
+  currentFloor = 0;
+  floorAnswered = FLOORS.map(() => false);
+
+  // Render dots
+  const dots = document.getElementById('floorDots');
+  dots.innerHTML = '';
+  FLOORS.forEach((f, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' current' : '');
+    d.id = 'fdot-' + i;
+    dots.appendChild(d);
+  });
+
+  renderAllFloors();
+  document.getElementById('nextFloorBtn').style.display = 'none';
+  document.getElementById('finishBtn').style.display = 'none';
+}
+
+function renderAllFloors() {
+  const track = document.getElementById('floorTrack');
+  track.innerHTML = '';
+  FLOORS.forEach((f, i) => {
+    const item = document.createElement('div');
+    item.className = 'floor-item' + (i === currentFloor ? ' active' : (i < currentFloor ? ' visited' : ''));
+    item.id = 'floor-' + i;
+
+    const repBars = `
+      <div class="rep-bar-section">
+        <div class="rep-bar-label">What can be decoded from bank here</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;">
+          ${[
+            { lbl:'Grammar / word type', val: f.rep.grammar, col:'#FFC107' },
+            { lbl:'Word sense / domain', val: f.rep.wordSense, col:'#4a7fd4' },
+            { lbl:'Semantic role', val: f.rep.semanticRole, col:'#d44a4a' },
+            { lbl:'Abstract context', val: f.rep.abstractCtx, col:'#6a9030' },
+          ].map(r => `
+            <div>
+              <div style="font-size:9px;letter-spacing:1px;text-transform:uppercase;color:#4a3a28;margin-bottom:3px;">${r.lbl}</div>
+              <div class="rep-bar"><div class="rep-fill" style="background:${r.col};width:${r.val * 100}%;"></div></div>
+            </div>`).join('')}
+        </div>
+      </div>`;
+
+    const probeOpts = f.probe.options.map((opt, oi) =>
+      `<button class="probe-opt" id="opt-${i}-${oi}" onclick="answerProbe(${i},${oi})" ${i !== currentFloor || floorAnswered[i] ? 'disabled' : ''}>${opt.text}</button>`
+    ).join('');
+
+    item.innerHTML = `
+      <div class="floor-num-col">
+        <div class="floor-num">${f.num}</div>
+        <div class="floor-label-sm">FLOOR</div>
+      </div>
+      <div class="floor-content">
+        <div class="floor-name">${f.name}</div>
+        <div class="floor-tagline">${f.tagline}</div>
+        <div class="mechanism-row">
+          <div class="mechanism-box att">
+            <div class="mechanism-title">Attention — ${f.att.title}</div>
+            <div class="mechanism-text">${f.att.text}</div>
+            <div style="margin-top:8px;padding:8px;background:#0d0508;border-radius:4px;">
+              <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#801818;margin-bottom:3px;">Where this capability comes from</div>
+              <div class="mechanism-text" style="font-size:11px;">${f.att.why}</div>
+            </div>
+          </div>
+          <div class="mechanism-box ffn">
+            <div class="mechanism-title">FFN — ${f.ffn.title}</div>
+            <div class="mechanism-text">${f.ffn.text}</div>
+            <div style="margin-top:8px;padding:8px;background:#030a02;border-radius:4px;">
+              <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#1a4010;margin-bottom:3px;">Where this capability comes from</div>
+              <div class="mechanism-text" style="font-size:11px;">${f.ffn.why}</div>
+            </div>
+          </div>
+        </div>
+        ${repBars}
+        <div class="probe-section" style="margin-top:12px;">
+          <div class="probe-question">Probe: ${f.probe.q}</div>
+          <div class="probe-options">${probeOpts}</div>
+          <div class="probe-feedback" id="pfb-${i}"></div>
+        </div>
+      </div>`;
+    track.appendChild(item);
+
+    if (i < FLOORS.length - 1) {
+      const conn = document.createElement('div');
+      conn.className = 'floor-connector';
+      track.appendChild(conn);
+    }
+  });
+}
+
+function answerProbe(floorIdx, optIdx) {
+  if (floorAnswered[floorIdx]) return;
+  const floor = FLOORS[floorIdx];
+  const opt = floor.probe.options[optIdx];
+  const correct = opt.correct;
+
+  floorAnswered[floorIdx] = true;
+
+  // Style all options
+  floor.probe.options.forEach((o, oi) => {
+    const btn = document.getElementById('opt-' + floorIdx + '-' + oi);
+    btn.classList.add('disabled');
+    if (o.correct) btn.classList.add('correct');
+    else if (oi === optIdx && !correct) btn.classList.add('wrong');
+  });
+
+  // Show feedback
+  const fb = document.getElementById('pfb-' + floorIdx);
+  fb.style.display = 'block';
+  fb.className = 'probe-feedback ' + (correct ? 'correct' : 'wrong');
+  fb.textContent = correct ? floor.probe.correctFeedback : floor.probe.wrongFeedback;
+
+  // Show next/finish
+  if (floorIdx < FLOORS.length - 1) {
+    const nextBtn = document.getElementById('nextFloorBtn');
+    nextBtn.style.display = 'inline-block';
+    nextBtn.disabled = false;
+    nextBtn.textContent = 'Floor ' + (floorIdx + 2) + ' →';
+  } else {
+    document.getElementById('finishBtn').style.display = 'inline-block';
+    document.getElementById('nextFloorBtn').style.display = 'none';
+  }
+
+  setTimeout(() => fb.scrollIntoView({behavior:'smooth',block:'nearest'}), 100);
+}
+
+function nextFloor() {
+  currentFloor++;
+  document.getElementById('floorProgress').textContent = 'Floor ' + (currentFloor + 1) + ' of ' + FLOORS.length;
+
+  // Update dots
+  for (let i = 0; i < FLOORS.length; i++) {
+    const d = document.getElementById('fdot-' + i);
+    if (i < currentFloor) d.className = 'dot done';
+    else if (i === currentFloor) d.className = 'dot current';
+    else d.className = 'dot';
+  }
+
+  document.getElementById('nextFloorBtn').style.display = 'none';
+  renderAllFloors();
+
+  // Scroll to current floor
+  setTimeout(() => {
+    const el = document.getElementById('floor-' + currentFloor);
+    if (el) el.scrollIntoView({behavior:'smooth',block:'start'});
+  }, 100);
+}
+</script>
+  <div class="mc-hotbar">
+    <a href="the-gate.html" class="mc-hotbar-slot">
+      <div class="mc-hotbar-num">1</div>
+      <div class="mc-hotbar-label">Gate</div>
+    </a>
+    <a href="the-map-room.html" class="mc-hotbar-slot">
+      <div class="mc-hotbar-num">2</div>
+      <div class="mc-hotbar-label">Map</div>
+    </a>
+    <a href="the-census-bureau.html" class="mc-hotbar-slot">
+      <div class="mc-hotbar-num">3</div>
+      <div class="mc-hotbar-label">Bureau</div>
+    </a>
+    <a href="the-town-square.html" class="mc-hotbar-slot">
+      <div class="mc-hotbar-num">4</div>
+      <div class="mc-hotbar-label">Square</div>
+    </a>
+    <a href="the-thread.html" class="mc-hotbar-slot">
+      <div class="mc-hotbar-num">5</div>
+      <div class="mc-hotbar-label">Thread</div>
+    </a>
+    <a href="the-library.html" class="mc-hotbar-slot">
+      <div class="mc-hotbar-num">6</div>
+      <div class="mc-hotbar-label">Library</div>
+    </a>
+    <a href="javascript:void(0)" class="mc-hotbar-slot current">
+      <div class="mc-hotbar-num">7</div>
+      <div class="mc-hotbar-label">Tower</div>
+    </a>
+    <a href="the-oracle.html" class="mc-hotbar-slot future">
+      <div class="mc-hotbar-num">8</div>
+      <div class="mc-hotbar-label">Oracle</div>
+    </a>
+  </div>
+</body>
+</html>
