@@ -1,35 +1,30 @@
-# Makerchamber — Game Studio Agent Architecture
+# Makerchamber — Browser Game Studio
 
-Browser-based transformer learning game managed through coordinated Claude Code agents.
-Each agent owns a specific domain, enforcing separation of concerns and quality.
+A multi-game browser studio. Each game teaches a concept through interactive play.
+Agents are coordinated through a structured hierarchy — each owns a specific domain.
 
 ## What This Is
 
-An 8-level browser game that teaches transformer architecture through interactive
-gameplay. Each level is a standalone HTML file with vanilla JS. Players explore
-"The City of Tokens" — a world where transformer concepts are the laws of physics.
+A studio that builds browser-based games teaching concepts across any domain
+(science, history, math, philosophy, etc.). Each game is a standalone project.
+Over time, patterns from these games will inform a generalized learning-game engine.
+The games being built now are both products AND research data for that engine.
 
-**Levels:**
-1. `the-gate.html` — Tokenization / Embedding
-2. `the-map-room.html` — Positional Encoding
-3. `the-census-bureau.html` — Attention Scores
-4. `the-town-square.html` — Self-Attention
-5. `the-thread.html` — Residual Connections
-6. `the-library.html` — Feed-Forward Network
-7. `the-tower.html` — Layer Stacking
-8. `the-oracle.html` — Output / Prediction
+## Games in Development
+
+- **City of Tokens** (`city-of-tokens/`) — 8 levels teaching transformer architecture through "The City of Tokens" world
 
 ## Technology Stack
 
-- **Platform**: Browser (Chrome primary, macOS)
-- **Language**: Vanilla JavaScript — no frameworks, no build step
-- **Styling**: Inline CSS per file — Minecraft Overworld aesthetic
-- **Persistence**: localStorage per level (game state)
-- **Fonts**: Press Start 2P (Minecraft feel), loaded via Google Fonts CDN
+- **Platform**: Browser — Chrome desktop primary, iOS Safari + Android Chrome mobile
+- **Language**: Vanilla JavaScript (ES2020+) — no frameworks, no build step
+- **Styling**: Inline CSS per file
+- **Persistence**: localStorage per game
 - **Version Control**: Git with trunk-based development
 - **Hosting**: Vercel (auto-deploy on push to main)
 
 No game engine. No bundler. No TypeScript. The simplicity is intentional.
+Future games may grow in scope — the stack may evolve.
 
 ## Project Structure
 
@@ -59,7 +54,7 @@ Every task follows: **Question → Options → Decision → Draft → Approval**
 
 @.claude/docs/coding-standards.md
 
-## Game Vision
+## Studio Vision & Design Methodology
 
 @design/pillars.md
 
