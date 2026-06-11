@@ -3,3 +3,7 @@ node_modules
 dist
 .claude/settings.local.json
 production/session-state/active.md
+.superpowers/
+.obsidian/
+# iCloud/Finder sync duplicates (e.g. "file 2.md")
+* 2.md
