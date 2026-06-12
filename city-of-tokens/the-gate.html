@@ -646,7 +646,9 @@ body {
 .mc-hotbar-slot.current .mc-hotbar-label { color: #FFC107; }
 
 @media (max-width: 600px) {
-  body { padding: 16px 14px; }
+  /* Prevent page-level horizontal scroll; body left unconstrained so word-display can scroll internally */
+  html { overflow-x: clip; }
+  body { padding: 16px 12px; }
 
   /* Game layout: stack Ledger below game area */
   .game-layout { grid-template-columns: 1fr; }
@@ -655,8 +657,10 @@ body {
   .token-counter { flex-wrap: wrap; }
   .hint-text { width: 100%; padding-top: 8px; border-top: 1px solid #3A3A3A; margin-top: 2px; font-style: normal; }
 
-  /* Wider gap tap targets */
-  .gap-btn { width: 36px; }
+  /* Word display: scale letters + gaps; overflow-x scroll exposes long words */
+  .char-box { width: 22px; font-size: 20px; }
+  .gap-btn { width: 28px; }
+  .word-display { padding: 14px 10px; overflow-x: auto; min-width: 0; }
 
   /* Intro token demo: scroll horizontally instead of wrapping */
   .token-demo { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; padding-bottom: 4px; }
@@ -667,6 +671,10 @@ body {
 
   /* Big title smaller on mobile */
   .big-title { font-size: 44px; }
+
+  /* Hotbar: scale down to fit 8 slots within mobile viewport */
+  .mc-hotbar { gap: 3px; }
+  .mc-hotbar-slot { width: 38px; height: 38px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
