@@ -309,7 +309,7 @@ body { background: #2C2C2C; color: #FFFFFF; font-family: 'Inter', sans-serif; mi
 
     <div class="insight-card" style="margin-top:18px;">
       <div class="insight-label">The K ≠ V principle</div>
-      <div class="insight-text">Key and Value are computed by different learned weight matrices from the same input. This separation is intentional: being "findable" (Key) and being "useful" (Value) are independent properties the model learns separately. Function words like "the" and "after" appear everywhere — they look important — but they contribute little to meaning resolution. The attention mechanism learns to route past them.</div>
+      <div class="insight-text">Every token in the square broadcasts a signal and carries a separate payload. The broadcast is what others search for when scanning the crowd. The payload is what actually gets handed over if chosen. These two things are not the same — a word can be loudly present and deliver almost nothing, or keep quiet and carry exactly what you need. "the" and "after" are everywhere; their signals are strong. But when your attention landed on them, they gave you almost nothing back. The model learns this gap independently for each word. It is called the Key–Value separation.</div>
     </div>
 
     <div style="text-align:center;margin-top:24px;">
@@ -331,8 +331,8 @@ body { background: #2C2C2C; color: #FFFFFF; font-family: 'Inter', sans-serif; mi
       <div style="font-size:12px;color:#4a3a28;">Round 3 of 3</div>
     </div>
 
-    <h3 style="font-family:'Fraunces',serif;font-size:26px;font-weight:300;color:#FFC107;margin-bottom:8px;">Multi-head attention</h3>
-    <p style="font-size:13px;color:#6a5840;line-height:1.7;margin-bottom:18px;">Attention doesn't run once — it runs in parallel across multiple heads, each with different weight matrices, each learning to look for different things. You have two advisors. The Syntax head has already allocated its chips. You control the Semantic head — 6 chips to distribute.</p>
+    <h3 style="font-family:'Fraunces',serif;font-size:26px;font-weight:300;color:#FFC107;margin-bottom:8px;">Two advisors, one word</h3>
+    <p style="font-size:13px;color:#6a5840;line-height:1.7;margin-bottom:18px;">The same question — "what does bank mean here?" — just got asked twice, by two different listeners looking for different things. One is trained to hear grammatical structure. The other is trained to hear meaning and domain. They run at the same time, on the same sentence, using entirely different criteria. You control the second one. Six chips. What matters for meaning?</p>
 
     <p class="section-label">The sentence</p>
     <div class="sentence-display" style="margin-bottom:18px;">
@@ -398,8 +398,8 @@ body { background: #2C2C2C; color: #FFFFFF; font-family: 'Inter', sans-serif; mi
     <div class="divider"></div>
     <div class="card" style="max-width:560px;margin:0 auto 16px;text-align:left;">
       <div class="section-label" style="margin-bottom:10px;">What self-attention does</div>
-      <p style="font-size:14px;color:#8a7460;line-height:1.75;margin-bottom:10px;">Every token simultaneously computes a Query, a Key, and a Value. Query × Key scores give relevance. Softmax turns scores into weights that sum to 1 — an attention budget. Those weights × Values give a weighted mixture that flows into the token's new representation.</p>
-      <p style="font-size:14px;color:#8a7460;line-height:1.75;">This runs H times in parallel (multi-head), each head with different weight matrices, each specializing in different relationships — syntax, semantics, co-reference, and more. Their outputs are concatenated and projected back down to the original dimension.</p>
+      <p style="font-size:14px;color:#8a7460;line-height:1.75;margin-bottom:10px;">You just did this three times, in three forms. A token asked which neighbors were relevant, scored them, and built a weighted mix of what they offered. That mix became its new representation — carrying the context that resolved its meaning. Then the same ask ran twice in parallel, each pass tuned to different signals, and the results were combined.</p>
+      <p style="font-size:14px;color:#8a7460;line-height:1.75;">The term for this is self-attention: every token attending to every other token, simultaneously, weighted by relevance. Running it in parallel across multiple learned perspectives is called multi-head attention. The scores come from Query × Key dot products; the payloads come from Values; softmax turns raw scores into weights that sum to 1.</p>
     </div>
     <div class="insight-card" style="max-width:560px;margin:0 auto 20px;text-align:left;">
       <div class="insight-label">What comes next</div>
@@ -649,6 +649,7 @@ function combineHeads() {
   document.getElementById('combineBtn').disabled = true;
   setTimeout(() => document.getElementById('combinedResult').scrollIntoView({behavior:'smooth',block:'nearest'}), 100);
 }
+if (new URLSearchParams(location.search).has('play')) { show('round1'); initRound1(); }
 </script>
   <div class="mc-hotbar">
     <a href="the-gate.html" class="mc-hotbar-slot">

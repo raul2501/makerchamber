@@ -212,7 +212,7 @@ body { background: #2C2C2C; color: #FFFFFF; font-family: 'Inter', sans-serif; mi
     <div id="r2result" style="display:none;margin-top:18px;">
       <div class="insight-card" style="margin-bottom:14px;">
         <div class="insight-label">Attention routes you to the right part of the Library</div>
-        <div class="insight-text">Same token. Same Library. Different attention history → different facts retrieved. This is how attention and FFN divide the work: attention decides which context you're in, FFN looks up what you know about things in that context. The Library doesn't interpret — it pattern-matches. What pattern you carry when you arrive determines everything.</div>
+        <div class="insight-text">Same word. Same shelves. You changed what the word was carrying when it walked in — and the Library pulled entirely different books. The square decides what context a token is living in. The Library looks up what the world knows about things in that context. The Library doesn't think. It matches patterns. Who you are when you arrive is the only question it answers.</div>
       </div>
       <div style="text-align:center;">
         <button class="btn-primary" onclick="show('round3')">The expansion →</button>
@@ -275,7 +275,7 @@ body { background: #2C2C2C; color: #FFFFFF; font-family: 'Inter', sans-serif; mi
 
     <div class="insight-card">
       <div class="insight-label">Attention vs FFN — the division of labor</div>
-      <div class="insight-text">Attention is dynamic: computed fresh every time, based on what tokens appear together in the current input. FFN is parametric: fixed in the weights, baked in during training. Attention says "what's relevant in this specific sentence." FFN says "what do I know about things like this." Together they form the two-stage processing that makes transformers powerful: route first, retrieve second.</div>
+      <div class="insight-text">The square recalculates from scratch every time — it reads the whole sentence and decides what matters, fresh, for this specific input. The Library never recalculates. Its shelves were arranged during training and have not moved since. One process is live and situational. The other is frozen and encyclopedic. You just played both: route first, then retrieve. That division — live routing, frozen retrieval — is what makes the whole system work.</div>
     </div>
 
     <div style="text-align:center;margin-top:24px;">
@@ -292,12 +292,12 @@ body { background: #2C2C2C; color: #FFFFFF; font-family: 'Inter', sans-serif; mi
     <div class="divider"></div>
     <div class="card" style="max-width:560px;margin:0 auto 16px;text-align:left;">
       <div class="section-label" style="margin-bottom:10px;">What the FFN does</div>
-      <p style="font-size:14px;color:#8a7460;line-height:1.75;margin-bottom:10px;">After attention, each token goes alone to the FFN — a two-layer network that matches its current representation against learned patterns and reads out stored knowledge. The expansion-contraction structure (4×) gives it a vast internal space to check patterns against before collapsing back to the working dimension.</p>
+      <p style="font-size:14px;color:#8a7460;line-height:1.75;margin-bottom:10px;">After the square, each word walks to the Library alone. It checks its current shape against every pattern on the shelves — a space four times larger than the word itself — then walks back out the same size, carrying whatever matched. The expansion is not a detour. It is the search. You need the room to check everything before you collapse back down.</p>
       <p style="font-size:14px;color:#8a7460;line-height:1.75;">What fires depends entirely on what attention left behind. Attention routes; FFN retrieves.</p>
     </div>
     <div class="insight-card" style="max-width:560px;margin:0 auto 20px;text-align:left;">
       <div class="insight-label">What comes next</div>
-      <div class="insight-text">One complete layer is: attention → residual → FFN → residual. Then it repeats — across every floor of the Tower. Each floor refines the representation further, from surface grammar to deep abstract meaning. Level 7: The Tower.</div>
+      <div class="insight-text">You just completed one full pass: the square shaped what the word was carrying, the Library retrieved what the world knows about it. That pass repeats — floor after floor of the Tower — each time pushing the word's meaning from surface pattern toward something deeper and more abstract. Level 7: The Tower.</div>
     </div>
     <div class="closing-links">
       <button class="btn-ghost" onclick="show('intro')">← Replay</button>
@@ -402,7 +402,7 @@ function revealR1() {
 
   document.getElementById('r1revealBtn').disabled = true;
   document.getElementById('r1result').style.display = 'block';
-  document.getElementById('r1insightText').textContent = 'The nature-domain facts fired strongly — riverbank erosion, alluvial deposits, flood plains, sediment. The finance-domain facts were nearly silent. This is because bank arrived carrying nature signals from the town square. The Library matched those patterns and retrieved geophysical knowledge, not financial knowledge. Same Library. Different arrival state.';
+  document.getElementById('r1insightText').textContent = 'The word "bank" walked in carrying flood signals — erosion, sediment, waterside location — and the shelf pulled nature facts. River erosion fired strongly. Financial deposits stayed dark. The same word, arriving with different luggage, retrieves completely different knowledge. What you carry in is what you get back.';
   setTimeout(() => document.getElementById('r1result').scrollIntoView({behavior:'smooth',block:'nearest'}), 100);
 }
 
@@ -436,6 +436,7 @@ function revealR2() {
   document.getElementById('r2result').style.display = 'block';
   setTimeout(() => document.getElementById('r2result').scrollIntoView({behavior:'smooth',block:'nearest'}), 100);
 }
+if (new URLSearchParams(location.search).has('play')) { show('round1'); initR1(); }
 </script>
   <div class="mc-hotbar">
     <a href="the-gate.html" class="mc-hotbar-slot">

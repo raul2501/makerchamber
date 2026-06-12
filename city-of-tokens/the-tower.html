@@ -174,12 +174,12 @@ body { background: #2C2C2C; color: #FFFFFF; font-family: 'Inter', sans-serif; mi
     <div class="divider"></div>
     <div class="card" style="max-width:560px;margin:0 auto 16px;text-align:left;">
       <div class="section-label" style="margin-bottom:10px;">What depth does</div>
-      <p style="font-size:14px;color:#8a7460;line-height:1.75;margin-bottom:10px;">Each layer adds a layer of interpretation. Early floors handle surface features — grammar, word type, punctuation relationships. Middle floors handle semantics — word sense, entity type, domain. Late floors handle abstraction — role in context, reasoning, long-range dependencies.</p>
+      <p style="font-size:14px;color:#8a7460;line-height:1.75;margin-bottom:10px;">You just watched a word move through four floors and come out almost unrecognizable. The first floor gave it grammar. The second gave it a meaning. The third gave it a role. The fourth gave it a place in a real event. Each floor could only do its job because the floor before it had done its job first. That dependency is not a flaw — it is the point. Shallow patterns have to settle before deep ones can form.</p>
       <p style="font-size:14px;color:#8a7460;line-height:1.75;">By floor 12 (or 32, or 96), "bank" isn't really "bank" anymore. It's a high-level representation of a natural boundary feature in an erosion event — the specific role this token plays in this specific sentence.</p>
     </div>
     <div class="insight-card" style="max-width:560px;margin:0 auto 20px;text-align:left;">
       <div class="insight-label">What comes next</div>
-      <div class="insight-text">After all the floors, the last token in the sequence must speak. Its final representation — the sum of everything that happened across every layer — gets projected back onto the vocabulary. Every token gets a probability. One gets sampled. Level 8: The Oracle.</div>
+      <div class="insight-text">Now the last token in the sequence carries everything it has accumulated across every floor. That accumulated signal gets held up against every word in the vocabulary, one at a time, and scored: how well does each word fit what this representation is pointing toward? The scores become probabilities. One word is chosen. That is the prediction. That is Level 8: The Oracle.</div>
     </div>
     <div class="closing-links">
       <button class="btn-ghost" onclick="show('intro')">← Replay</button>
@@ -202,13 +202,13 @@ const FLOORS = [
     tagline: 'Grammar, syntax, punctuation',
     att: {
       title: 'What attention does here',
-      text: 'Early attention heads track local relationships: which words are adjacent, what punctuation structures the clause, what basic syntactic links exist. At floor 1, heads primarily notice that "bank" follows "the" and precedes "eroded" — the most immediate grammatical neighbors.',
-      why: 'These heads exist because early layers of transformers reliably encode shallow syntactic features. Probing studies show that part-of-speech information peaks in layer 1–2 of models like BERT. The attention weight matrices learned, through training on billions of examples, to group grammatically similar contexts.'
+      text: 'At this floor, "bank" looked only at its immediate neighbors — the word before it ("the") and the word after it ("eroded"). It has not reached "flood" yet. All it knows right now is its local position in the sentence. This matters because position and word order carry grammatical structure: a word flanked by article and verb is almost certainly a noun. The heads doing this scanning are called attention heads, and in the first floor they operate mostly at close range.',
+      why: 'The model was never told "nouns follow articles." It saw billions of sentences where article-then-noun appeared together, and the weights adjusted until nearby word patterns reliably clustered. What emerged is that the first floor is where grammatical position gets encoded — not because anyone designed it that way, but because that pattern was the cheapest one to learn first.'
     },
     ffn: {
       title: 'What FFN retrieves here',
-      text: 'The FFN at floor 1 matches "bank" against basic morphological and part-of-speech patterns. At this point the context is thin — mostly grammatical signal. The Library returns: noun, common word, multiple meanings possible.',
-      why: 'FFN circuits in early layers encode token-level features: word frequency, rough category (noun/verb/adj), common inflections. These are shallow pattern matches that don\'t require much context to fire.'
+      text: 'At this floor, the bank of stored patterns gets consulted with only one question in hand: what kind of word is this? The context is too thin yet to say anything else. The answer that comes back: noun, common, ambiguous — meaning could go several ways. The part-of-store that fires here is the one activated by shallow grammatical cues, before any distance context arrives.',
+      why: 'These patterns fire fast because they don\'t need context — just the word itself. How common is it? What shape does it take (ending, prefix)? What broad category fits? The model learned these from sheer repetition across training. They\'re the cheapest signal to store: one word in, one category out.'
     },
     probe: {
       q: 'After floor 1, what can be decoded from bank\'s representation?',
@@ -218,8 +218,8 @@ const FLOORS = [
         { text: 'bank will be associated with erosion', correct: false },
         { text: 'bank is in a financial context', correct: false },
       ],
-      correctFeedback: 'Correct. Floor 1 encodes basic grammatical information — word type, local neighbors, syntactic position. Semantic disambiguation (which meaning of bank?) hasn\'t happened yet. That requires context to flow in from surrounding tokens, which takes more layers.',
-      wrongFeedback: 'Not quite. Floor 1 is still shallow. The attention at this level sees only nearby grammatical relationships — "the" before, "eroded" after. That\'s enough to identify word type (noun), but not enough to disambiguate meaning or semantic role. That comes later.'
+      correctFeedback: 'Right. All "bank" could see at this floor were its nearest neighbors — and that was enough to establish: noun, in a clause, role not yet determined. The question of which bank — river or finance — hasn\'t been touched. Answering that requires seeing "flood" and "eroded," which are further away. More floors are needed before that context arrives.',
+      wrongFeedback: 'Not yet. At this floor, "bank" only saw its immediate neighbors — "the" and "eroded." That narrow view is enough to identify word type, but meaning disambiguation requires reaching further back, to "flood." The distance needed for that hasn\'t been covered yet.'
     },
     rep: { grammar: 0.9, wordSense: 0.1, semanticRole: 0.0, abstractCtx: 0.0 }
   },
@@ -229,13 +229,13 @@ const FLOORS = [
     tagline: 'Disambiguation and semantic category',
     att: {
       title: 'What attention does here',
-      text: 'By floor 2, attention heads begin looking further — past the immediate neighbors to the broader clause. "bank" can now attend to "flood" (3 positions back) and "eroded" (2 positions ahead) simultaneously. The Q/K/V matrices at this floor were trained to score "flood" as highly relevant to "bank"\'s query.',
-      why: 'Middle-layer attention heads specialize in word sense disambiguation (WSD). This has been documented in research — heads in layers 2–4 of BERT reliably pick out the correct sense of polysemous words by attending to disambiguating context. The model learned this because supervised and unsupervised pretraining created implicit WSD signal in the weights.'
+      text: 'At this floor, "bank" reaches past its immediate neighbors for the first time. It now attends to "flood," three positions back, and picks up "eroded" two steps ahead. Those two words together change everything — no financial context carries "flood" and "eroded" in the same breath. The representation begins tilting toward the natural-world sense. This is why range matters: a word cannot know its own meaning until it can see what surrounds it at distance.',
+      why: 'The model was trained on text where "bank" near "flood" almost always meant a riverbank, and "bank" near "interest rate" almost always meant a financial institution. Over billions of examples, the weights learned which distant words settle ambiguous cases. The result: by the second floor, something in the network has learned to reach for precisely those disambiguating words. Nobody labeled them as important — the training signal made them important.'
     },
     ffn: {
       title: 'What FFN retrieves here',
-      text: 'With stronger context now in the representation, the FFN starts retrieving domain-level knowledge. "bank" carrying "flood" signal now activates patterns for natural waterways, geography, and erosion — rather than the financial patterns that would fire for "bank" in a loan context.',
-      why: 'FFN circuits at floor 2 encode entity type and semantic category information — whether something is a physical object, an institution, an abstract concept. These circuits learned, through training, that the co-occurrence of "bank" with "flood" is strongly associated with the natural-world sense.'
+      text: 'Now that "flood" has been folded into what "bank" is carrying, the stored patterns consulted at this floor shift to match. The financial patterns don\'t fire — the incoming signal doesn\'t look like a loan context. Instead, patterns for waterways, geography, and erosion activate. The same word, one floor later, is retrieving a different department of the store entirely.',
+      why: 'The co-occurrence of "bank" and "flood" appeared together so reliably in natural-world contexts during training that specific weight patterns crystallized to detect it. When both signals are present in the representation, those patterns activate and route the output toward physical-object, natural-boundary knowledge rather than institutional knowledge. The distinction between "bank the place" and "bank the institution" is stored as a difference in which circuits fire.'
     },
     probe: {
       q: 'After floor 2, what additional information can be decoded from bank?',
@@ -245,8 +245,8 @@ const FLOORS = [
         { text: 'bank is the grammatical object of the sentence', correct: false },
         { text: 'bank will be followed by a number', correct: false },
       ],
-      correctFeedback: 'Right. By floor 2, enough context has flowed in for word sense disambiguation. "flood," "eroded," "muddy," and "shore" are all semantically consistent with a natural waterway — the model has seen this co-occurrence pattern billions of times. The financial sense of "bank" is now deprioritized in the representation.',
-      wrongFeedback: 'Not this one. By floor 2, attention has reached "flood" and "eroded" — and those signals strongly suggest the natural-world reading of "bank." The financial sense is still somewhat present in the residual stream, but the nature-domain vectors are now dominant.'
+      correctFeedback: 'Right. "flood," "eroded," "muddy," and "shore" appeared together with "riverbank" in training text far more often than with any financial institution. Once those words are in range, the natural-world reading dominates and the financial reading fades. The ambiguity is resolved — not by a rule, but by accumulated co-occurrence.',
+      wrongFeedback: 'Not quite. By this floor, "bank" has reached "flood" and "eroded" — and those words overwhelmingly co-occur with riverbanks, not financial institutions, in training data. The financial reading hasn\'t vanished entirely, but it\'s now a minority signal. What\'s dominant is the natural-world reading.'
     },
     rep: { grammar: 0.9, wordSense: 0.75, semanticRole: 0.15, abstractCtx: 0.0 }
   },
@@ -256,13 +256,13 @@ const FLOORS = [
     tagline: 'Who does what to whom',
     att: {
       title: 'What attention does here',
-      text: 'Floor 3 attention heads track structural roles across the full clause. "bank" now attends to "eroded" not just as a neighbor but as its predicate — the verb describing what happens to it. Heads at this level encode subject-verb-object structure. "bank" is learning that it is the thing being eroded, not the agent doing something.',
-      why: 'Semantic role labeling (SRL) emerges in middle-to-late attention layers. Research probing BERT layers shows that argument structure (who is the agent vs. the patient) peaks around layers 4–8. The Q/K/V weights at this floor were shaped by training on tasks that required understanding who does what to whom — reading comprehension, textual entailment, co-reference resolution all push these representations to develop.'
+      text: 'At this floor, "bank" stops reading "eroded" as a nearby word and starts reading it as a statement about itself: it is the thing being eroded. Not the agent of erosion — the recipient. This is a more structured kind of attention: not just which words are nearby, but who is doing what to whom across the whole clause. The shift matters because a word\'s role in an event — the actor vs. the acted-upon — changes what you\'d predict next.',
+      why: 'Understanding who acts and who is acted upon is essential for tasks like question answering and textual entailment — which the model was trained on. The weights were pushed, across millions of such examples, to distinguish agent from patient in a clause. That pressure shaped the middle floors into the place where this structural reading emerges. No one labeled every sentence with role annotations; the downstream tasks demanded it, and the network learned to supply it.'
     },
     ffn: {
       title: 'What FFN retrieves here',
-      text: 'The FFN now has a rich context to match against: noun + natural entity + subject + patient of erosion + waterway domain. Patterns fire for: boundary features, shoreline structures, geomorphological processes. The Library is now retrieving conceptually specific knowledge about how riverbanks behave physically.',
-      why: 'Later-floor FFN circuits store more abstract and compositional knowledge — not just "bank is a noun" but "bank-in-this-context is a physical entity that undergoes change from environmental forces." These circuits are believed to encode relational facts that require multiple-layer processing to properly activate.'
+      text: 'By this floor, the incoming signal is rich enough to unlock more specific patterns in the store: not just "natural object" but "boundary feature — the kind that erodes, that lies at the edge of moving water, that changes shape under force." The retrieved knowledge becomes concrete. Earlier floors gave category. This floor starts giving physical behavior.',
+      why: 'These patterns can only fire after the earlier floors have run. The specific signal — natural boundary + subject of erosion — needs to have been assembled first. Once it exists, the stored weights recognize it and supply knowledge that a shallow word-level lookup never could. The store is organized not just by word but by contextual role, and this role is only legible after multiple floors of processing.'
     },
     probe: {
       q: 'After floor 3, what can be decoded that wasn\'t available at floor 2?',
@@ -272,8 +272,8 @@ const FLOORS = [
         { text: 'bank appears in position 6', correct: false },
         { text: 'bank co-occurs with "flood"', correct: false },
       ],
-      correctFeedback: 'Correct. Semantic role — the patient of erosion, the thing being acted on — emerges at floor 3. "bank" now carries information about its grammatical and semantic role in this specific event structure: it is a physical feature undergoing change, not an agent doing something. This kind of structured role information requires attending to the full clause pattern, not just adjacent words.',
-      wrongFeedback: 'That information was already present at an earlier floor. Floor 3 adds something new: the semantic role — specifically that "bank" is the thing being eroded (the patient), not the eroder (the agent). This requires the model to have processed the full clause structure and understood the predicate-argument relationship.'
+      correctFeedback: 'Correct. "bank" is now carrying something it didn\'t have at floor 2: the information that it is being acted on, not acting. That distinction — who does what to whom — only becomes readable after the model has processed the full clause pattern. It requires more than nearby words; it requires understanding the whole event structure. That\'s what this floor adds.',
+      wrongFeedback: 'That was already settled at an earlier floor. What this floor adds is something different: the distinction between actor and acted-upon. "bank" is the thing eroded, not the eroder. Establishing that requires reading the whole clause — who does what to whom — which takes more processing than the earlier floors provided.'
     },
     rep: { grammar: 0.9, wordSense: 0.90, semanticRole: 0.80, abstractCtx: 0.2 }
   },
@@ -283,13 +283,13 @@ const FLOORS = [
     tagline: 'Full contextual role — ready for prediction',
     att: {
       title: 'What attention does here',
-      text: 'Late attention heads attend across the full sentence and beyond — connecting "bank" to the entire discourse frame. At this floor, "bank" attends to "after the flood" as an event structure, not just individual words. It understands that this sentence describes the aftermath of a natural disaster affecting a physical landscape feature.',
-      why: 'Late-layer attention heads are associated with abstract, discourse-level reasoning. Research shows that co-reference resolution, long-range syntactic agreement, and high-level semantic compositionality emerge in the final layers. At this point, the Q/K/V matrices have learned to encode full event representations rather than pairwise token relationships.'
+      text: 'At this floor, "bank" is no longer attending to individual words. It\'s reading the whole sentence as an event: a flood happened, and in its aftermath a landscape feature changed. "after the flood" is not three separate words anymore — it\'s a single temporal frame. "bank" knows it lives inside that frame. This shift from word-by-word to event-level reading is what the final floors produce, and it\'s what makes the representation useful for anything requiring real-world reasoning.',
+      why: 'Predicting well requires understanding events, not just words. A model that only sees pairwise word relationships cannot resolve whether "it" refers to the bank or the flood, cannot handle long-range agreement, cannot compose meaning across clauses. The training pressure from tasks requiring those capabilities pushed the final floors into the role of event-level integration. The result is emergent: nobody designed it, but the pressure demanded it.'
     },
     ffn: {
       title: 'What FFN retrieves here',
-      text: 'The FFN at the final floor has the most abstract and specific pattern available: "riverbank as the subject of erosion in a flood event." Patterns fire for: floodplain geomorphology, post-flood landscape change, sediment transport. The retrieved knowledge is now highly contextualized — not just facts about banks, but facts relevant to this specific type of scenario.',
-      why: 'Top-layer FFN circuits are believed to store the most compositional and task-specific knowledge. They fire on complex, context-dependent patterns that require the full processing pipeline to have run first. This is consistent with the "superposition" hypothesis — later layers pack more task-relevant information into the same dimensional space.'
+      text: 'At this floor, the signal coming into the store is the most specific it has ever been: a riverbank, being eroded, in the aftermath of a flood. That specificity unlocks patterns that could never have fired at floor 1 — knowledge about how floodplains change, how sediment moves, what happens to shorelines after high water. The same word, processed through four floors, has gone from "noun, ambiguous" to a fully situated participant in a physical event.',
+      why: 'These patterns can\'t fire until the full pipeline has run. They require a specific, assembled signal — and that signal only exists after four floors of accumulation. What\'s strange is that the same weights that store "riverbank in a flood event" also store millions of other composite patterns, all superimposed on each other. The final floors aren\'t storing more data than the earlier ones — they\'re storing it at a higher level of specificity, packed into the same space.'
     },
     probe: {
       q: 'After floor 4 (the final floor), what does bank\'s representation encode?',
@@ -299,8 +299,8 @@ const FLOORS = [
         { text: 'A riverbank undergoing physical erosion in a flood event — full contextual role', correct: true },
         { text: 'A financial institution in a lending scenario', correct: false },
       ],
-      correctFeedback: 'Exactly right. The final representation of "bank" is not just the word, not just the concept of a natural waterway, but the specific role of a riverbank in this particular event — a physical landscape feature being worn away by floodwater. This specificity is what makes the final representation useful for prediction: the model can now generate a contextually accurate next token from this rich, layered understanding.',
-      wrongFeedback: 'By floor 4, bank\'s representation has accumulated four floors of context. It\'s not just a word or a category — it\'s a fully contextualized representation of a specific role in a specific event. The final layer encodes: natural physical feature + subject of erosion + flood event context + geomorphological domain. From this, the prediction layer can accurately complete the sentence.'
+      correctFeedback: 'Right. What started as an ambiguous noun is now a specific participant in a specific event: a physical boundary feature, being worn away by floodwater, in the aftermath of a flood. That precision is what makes prediction possible. A model holding that representation can generate a next word that fits the physical reality of the sentence — not just a grammatically plausible word, but a contextually accurate one.',
+      wrongFeedback: 'By this floor, four layers of context have accumulated in "bank\'s" representation. What it carries now is not a word or a category — it\'s a role in an event. A physical boundary feature, being eroded, after a flood. That specificity is what makes the final layer useful for prediction. Without it, the model would only know what kind of word comes next. With it, it knows what kind of thing comes next.'
     },
     rep: { grammar: 0.9, wordSense: 0.95, semanticRole: 0.92, abstractCtx: 0.90 }
   }
@@ -457,6 +457,7 @@ function nextFloor() {
     if (el) el.scrollIntoView({behavior:'smooth',block:'start'});
   }, 100);
 }
+if (new URLSearchParams(location.search).has('play')) { show('floors'); initFloors(); }
 </script>
   <div class="mc-hotbar">
     <a href="the-gate.html" class="mc-hotbar-slot">

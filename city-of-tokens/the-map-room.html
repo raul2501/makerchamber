@@ -627,7 +627,7 @@ const ROUNDS = [
     instruction: "Drag 'token' to where you think it belongs.",
     neighbors: ["text", "word", "sentence", "grammar", "code", "data"],
     neighborNote: "Lands at the Language / Technology boundary — a word that lives in both worlds.",
-    explanation: "A word's position reflects every context it appears in across the training data. 'Token' shows up in linguistic contexts (word, sentence) and technical ones (code, data). The map places it at the boundary between both.",
+    explanation: "You placed 'token' and it landed at the edge between two neighborhoods — Language on one side, Technology on the other. That happened because 'token' turns up in both worlds in written text: in sentences about grammar, and in sentences about code. The map averaged all of that into one position. This is called a word embedding.",
     insight: "A word's position reflects the full range of its usage — not just the most obvious meaning.",
     polysemy: false
   },
@@ -638,7 +638,7 @@ const ROUNDS = [
     instruction: "Drag 'unhappy' to where you think it belongs. Notice where it lands relative to 'happy'.",
     neighbors: ["sad", "anger", "fear", "joy", "happy", "love"],
     neighborNote: "Near 'happy' — same cluster, same domain — but shifted in the direction of the negative emotions.",
-    explanation: "The prefix 'un-' creates a directional shift in embedding space. 'unhappy' is geometrically close to 'happy' (same domain) but displaced toward the negative cluster. The space doesn't just cluster similar things — it encodes relationships as directions.",
+    explanation: "You placed 'unhappy' and it landed near 'happy' — same neighborhood, same emotional territory — but pulled toward the negative side. That shift isn't random. Every word carrying 'un-' landed in a similar direction relative to its root. The map doesn't only group similar things together; it preserves the relationship between a word and its opposite as a consistent direction across the whole space.",
     insight: "Prefixes and relationships create directional structure. 'unhappy' is near 'happy', shifted negative — not just near 'sad'.",
     polysemy: false,
     showHappy: true
@@ -653,7 +653,7 @@ const ROUNDS = [
     natureNeighbors:  ["river", "flood", "stream", "shore"],
     polysemyCentral: "'bank' landed between two completely different neighborhoods. The map had to place it somewhere — so it split the difference.",
     explanation: "The map places 'bank' between Finance and Nature because both meanings appeared in training data. The position is a compromise — an average of every sentence containing 'bank' that the model ever read. Neither meaning dominates. Neither is wrong.",
-    insight: "Polysemous words are stranded between their meanings. The map can't choose — it gives them one position that belongs fully to neither.",
+    insight: "'bank' has two lives — one near rivers, one near vaults — and the map gave it a single spot that belongs fully to neither. That isn't a mistake. It's the honest result of averaging every sentence ever written that contained this word. The map can't choose between meanings, so it doesn't. This one fixed position for a word with multiple meanings is what's called polysemy.",
     polysemy: true
   }
 ];
@@ -1073,6 +1073,7 @@ function clearDynamicLayers() {
   if (dot) { dot.setAttribute('fill', '#3a2010'); dot.setAttribute('r', '4'); }
   if (label) { label.setAttribute('fill', '#8a5030'); }
 }
+if (new URLSearchParams(location.search).has('play')) startGame();
 </script>
   <div class="mc-hotbar">
     <a href="the-gate.html" class="mc-hotbar-slot">

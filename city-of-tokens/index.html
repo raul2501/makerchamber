@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>City of Tokens</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Fraunces:opsz,wght@9..144,300;9..144,600&family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #2C2C2C;
+  color: #FFFFFF;
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  line-height: 1.65;
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+}
+
+.page {
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 48px 24px 80px;
+}
+
+/* ── HEADER ── */
+.header {
+  text-align: center;
+  margin-bottom: 52px;
+}
+
+.eyebrow {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #CCCCCC;
+  line-height: 2;
+  margin-bottom: 14px;
+}
+
+.title {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 300;
+  font-size: 60px;
+  color: #FFC107;
+  line-height: 1;
+  margin-bottom: 16px;
+}
+
+.divider {
+  width: 48px;
+  height: 2px;
+  background: repeating-linear-gradient(90deg, #4A4A4A 0 8px, transparent 8px 12px);
+  margin: 20px auto;
+}
+
+.subtitle {
+  max-width: 480px;
+  margin: 0 auto;
+  color: #DDDDDD;
+  font-size: 15px;
+  line-height: 1.85;
+}
+
+/* ── GRID ── */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 600px) {
+  .grid { grid-template-columns: 1fr; }
+  .title { font-size: 40px; }
+}
+
+/* ── LEVEL CARD ── */
+.card {
+  background: #5D5D5D;
+  border-top: 3px solid #9A9A9A;
+  border-left: 3px solid #9A9A9A;
+  border-bottom: 3px solid #1A1A1A;
+  border-right: 3px solid #1A1A1A;
+  box-shadow: inset 2px 2px 0 #7A7A7A, inset -2px -2px 0 #1A1A1A;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.card-eyebrow {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #AAAAAA;
+  line-height: 2;
+}
+
+.card-title {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 300;
+  font-size: 28px;
+  color: #FFC107;
+  line-height: 1.1;
+}
+
+.card-desc {
+  font-size: 13px;
+  color: #DDDDDD;
+  line-height: 1.65;
+  flex: 1;
+}
+
+.card-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+/* ── BUTTONS ── */
+.btn-primary {
+  display: inline-block;
+  padding: 10px 20px;
+  background: #5D8733;
+  color: #FFFFFF;
+  border: none;
+  border-top: 4px solid #8DB360;
+  border-left: 4px solid #8DB360;
+  border-bottom: 4px solid #2A5A18;
+  border-right: 4px solid #2A5A18;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  text-decoration: none;
+  touch-action: manipulation;
+  transition: background 0.1s;
+  line-height: 1.8;
+}
+.btn-primary:hover { background: #6B9E38; }
+.btn-primary:active {
+  border-top-color: #2A5A18;
+  border-left-color: #2A5A18;
+  border-bottom-color: #8DB360;
+  border-right-color: #8DB360;
+}
+
+.btn-ghost {
+  display: inline-block;
+  padding: 9px 16px;
+  background: transparent;
+  color: #BBBBBB;
+  border: 1px solid #555555;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  text-decoration: none;
+  touch-action: manipulation;
+  transition: all 0.15s;
+  line-height: 1.8;
+}
+.btn-ghost:hover { border-color: #FFC107; color: #FFC107; }
+
+/* ── SECTION LABEL ── */
+.section-label {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #888888;
+  line-height: 2;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #3A3A3A;
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="header">
+    <div class="eyebrow">Maker Chamber · Browser Game</div>
+    <h1 class="title">City of Tokens</h1>
+    <div class="divider"></div>
+    <p class="subtitle">Eight levels teaching transformer architecture through play. A traveler enters the city as a flat word and exits as a thought.</p>
+  </header>
+
+  <div class="section-label">8 Levels · Click to play or test mechanic directly</div>
+
+  <div class="grid">
+
+    <div class="card">
+      <div class="card-eyebrow">Level 01 · Tokenization</div>
+      <div class="card-title">The Gate</div>
+      <p class="card-desc">Click between letters to place cut points. Find the fewest valid tokens — every segment must be in the Ledger.</p>
+      <div class="card-actions">
+        <a class="btn-primary" href="the-gate.html">Play →</a>
+        <a class="btn-ghost" href="the-gate.html?play">Test mechanic</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-eyebrow">Level 02 · Positional Encoding</div>
+      <div class="card-title">The Map Room</div>
+      <p class="card-desc">Drag tokens onto a 2D meaning map. Watch similar words cluster — and see <span style="font-family:'JetBrains Mono',monospace;color:#FFC107;font-size:12px">bank</span> strand between two worlds.</p>
+      <div class="card-actions">
+        <a class="btn-primary" href="the-map-room.html">Play →</a>
+        <a class="btn-ghost" href="the-map-room.html?play">Test mechanic</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-eyebrow">Level 03 · Attention Scores</div>
+      <div class="card-title">The Census Bureau</div>
+      <p class="card-desc">Arrange scrambled tokens by position. See how stamping position makes identical parallel sets diverge.</p>
+      <div class="card-actions">
+        <a class="btn-primary" href="the-census-bureau.html">Play →</a>
+        <a class="btn-ghost" href="the-census-bureau.html?play">Test mechanic</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-eyebrow">Level 04 · Self-Attention</div>
+      <div class="card-title">The Town Square</div>
+      <p class="card-desc">Distribute 10 attention chips across surrounding tokens. Your weights determine what <span style="font-family:'JetBrains Mono',monospace;color:#FFC107;font-size:12px">bank</span> understands.</p>
+      <div class="card-actions">
+        <a class="btn-primary" href="the-town-square.html">Play →</a>
+        <a class="btn-ghost" href="the-town-square.html?play">Test mechanic</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-eyebrow">Level 05 · Residual Connections</div>
+      <div class="card-title">The Thread</div>
+      <p class="card-desc">Toggle residual connections on and off. Watch what the token loses when its original signal is severed.</p>
+      <div class="card-actions">
+        <a class="btn-primary" href="the-thread.html">Play →</a>
+        <a class="btn-ghost" href="the-thread.html?play">Test mechanic</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-eyebrow">Level 06 · Feed-Forward Network</div>
+      <div class="card-title">The Library</div>
+      <p class="card-desc">Select which stored facts fire when <span style="font-family:'JetBrains Mono',monospace;color:#FFC107;font-size:12px">bank</span> arrives. Same word, different context — different library output.</p>
+      <div class="card-actions">
+        <a class="btn-primary" href="the-library.html">Play →</a>
+        <a class="btn-ghost" href="the-library.html?play">Test mechanic</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-eyebrow">Level 07 · Layer Stacking</div>
+      <div class="card-title">The Tower</div>
+      <p class="card-desc">Step through 4 layers, answering probes at each floor. Watch an ambiguous token resolve as depth increases.</p>
+      <div class="card-actions">
+        <a class="btn-primary" href="the-tower.html">Play →</a>
+        <a class="btn-ghost" href="the-tower.html?play">Test mechanic</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-eyebrow">Level 08 · Output / Prediction</div>
+      <div class="card-title">The Oracle</div>
+      <p class="card-desc">Distribute 100 confidence points across next-token candidates. Commit to a distribution, not a single answer.</p>
+      <div class="card-actions">
+        <a class="btn-primary" href="the-oracle.html">Play →</a>
+        <a class="btn-ghost" href="the-oracle.html?play">Test mechanic</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

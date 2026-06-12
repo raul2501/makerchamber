@@ -415,7 +415,7 @@ svg#minimap { display: block; width: 100%; }
       </div>
       <div class="insight-card" style="margin-bottom:20px;">
         <div class="insight-label">The rule</div>
-        <div class="insight-text">Without position encoding, a transformer sees a bag of tokens, not a sequence. Position encoding turns a set into an order.</div>
+        <div class="insight-text">You just placed three tokens — and the moment you did, the two sentences became different things. That distinction is why order has to be stamped in before the city processes anything. This is called positional encoding.</div>
       </div>
       <div style="text-align:right;">
         <button class="btn-primary" onclick="goRound(2)">Next →</button>
@@ -446,7 +446,7 @@ svg#minimap { display: block; width: 100%; }
     </div>
 
     <div style="margin-bottom:10px; font-size:13px; color:#5a4a35;">
-      Before position encoding, all three instances of "only" produce the <em>same</em> vector — the model can't tell which sentence it's in.
+      Right now, all three "only" tokens sit on the same point on the map. They carry the same identity. The city has no way to tell them apart.
     </div>
 
     <div class="minimap-wrap">
@@ -568,12 +568,12 @@ svg#minimap { display: block; width: 100%; }
     </div>
 
     <div class="card" style="margin-bottom:12px; font-size:14px; color:#8a7460; line-height:1.75;">
-      This is what makes the transformer architecture so powerful. Sequential models (like older RNNs) had to process words one at a time to maintain order. The transformer can process everything at once — because it front-loads the order information into each token's representation.
+      Older systems had to read words one at a time to keep track of which came first. That was the only way to preserve order. The transformer skips that entirely — every token already carries its position before the parallel step begins, so nothing needs to wait. That front-loading is what makes processing everything at once possible.
     </div>
 
     <div class="insight-card" style="margin-bottom:20px;">
       <div class="insight-label">The rule</div>
-      <div class="insight-text">Position encoding makes parallel processing possible. Order is injected upfront so the transformer never needs to read sequentially.</div>
+      <div class="insight-text">Every token arrived at the parallel step already stamped with its sequence number. Nothing needed to wait for the token before it. That's why the whole sequence can be processed at once — and why the stamp has to happen first. This is called positional encoding.</div>
     </div>
 
     <div style="text-align:right;">
@@ -937,6 +937,7 @@ goRound = function(n) {
   _goRound(n);
   if (n === 3) setTimeout(revealParallelPhases, 400);
 };
+if (new URLSearchParams(location.search).has('play')) startGame();
 </script>
   <div class="mc-hotbar">
     <a href="the-gate.html" class="mc-hotbar-slot">

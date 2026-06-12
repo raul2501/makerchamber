@@ -156,8 +156,8 @@ body { background: #2C2C2C; color: #FFFFFF; font-family: 'Inter', sans-serif; mi
     <div class="big-title">The<br>Thread</div>
     <div class="divider"></div>
     <p class="intro-body">
-      Every attention head and feed-forward layer generates an <em>update</em> — a signal about what it found. But a strong signal can destroy what was already known.<br><br>
-      The residual connection is the solution: instead of <strong>replacing</strong> the token's meaning, each layer <strong>adds</strong> to it. The original is never erased. Updates accumulate like a thread that keeps its first stitch.<br><br>
+      Every layer that processes a token produces a signal about what it found. But a strong signal can destroy what was already known.<br><br>
+      The solution is to never replace — only add. Instead of overwriting the token's meaning, each layer adds its findings on top. The original is never erased. Meanings accumulate like a thread that keeps its first stitch. This is called a residual connection.<br><br>
       You'll see exactly what happens to <strong>bank</strong> when updates replace versus add.
     </p>
     <div class="intro-nav">
@@ -364,8 +364,8 @@ body { background: #2C2C2C; color: #FFFFFF; font-family: 'Inter', sans-serif; mi
     <div class="big-title">The<br>Thread<br>holds.</div>
     <div class="divider"></div>
     <p class="intro-body">
-      The residual connection is what lets transformers go deep. Without it, each layer would overwrite the last — the model would forget its first impression of <span style="font-family:'JetBrains Mono',monospace;color:#FFC107">bank</span> the moment attention found water.<br><br>
-      Instead, the original meaning threads through every layer. Updates accumulate. Normalization keeps them in balance. The word arrives at the output head carrying <em>all</em> of what the model learned — not just the last thing.
+      Without the addition design you just played with, each layer would overwrite the last — the model would forget its first impression of <em>bank</em> the moment attention found water. Going deeper would make things worse, not better.<br><br>
+      Instead, the original meaning threads through every layer. Each update stacks on top, and a balancing step keeps no single signal from taking over. The word arrives at the end carrying <em>all</em> of what the model learned — not just the last thing. This architecture is called a residual connection, and it is the reason transformers can be deep at all.
     </p>
     <div style="background:#5D5D5D;border:1px solid #3A3A3A;border-radius:10px;padding:18px 22px;max-width:480px;margin:24px auto 0;text-align:left;">
       <div class="section-label">the sentence</div>
@@ -532,7 +532,7 @@ function confirmR1() {
     fb.innerHTML = `<div class="insight-card" style="margin-top:0;">
       <div class="insight-label">Correct</div>
       <div class="insight-text">
-        Addition is the right architecture. The original embedding of <em>bank</em> — financial institution — stays in the stream forever. The attention update adds flood-erosion context on top. The result is <em>riverbank</em>: both meanings available, one dominant by context. Replace would have discarded the original before the model even knew if it needed it.
+        You kept the original. The word <em>bank</em> still carries its financial-institution meaning underneath the flood-erosion signal that attention just added. The result is <em>riverbank</em>: both meanings present, context deciding which dominates. Replace would have thrown away the original before anything downstream could use it.
       </div>
     </div>`;
   } else {
@@ -598,11 +598,11 @@ function updateProbe() {
     const insightText = document.getElementById('r2insightText');
     insight.style.display = 'block';
     if (r2Active.size === 0) {
-      insightText.textContent = 'Without any layer updates, bank defaults to its original training meaning: financial institution. The residual stream only carries the embedding, with no context.';
+      insightText.innerHTML = 'You removed every layer\'s contribution. What remains is only what <em>bank</em> meant before this sentence — a financial institution. Nothing the model noticed about floods, shores, or erosion survived. The stream is just the starting point, with no layers having added anything.';
     } else if (r2Active.size <= 2) {
-      insightText.textContent = 'With only some layers, bank has partial context — it knows something is happening, but the full picture (riverbank eroding along a muddy shore) requires all four updates stacked together.';
+      insightText.innerHTML = 'You left some contributions in and removed others. <em>Bank</em> can feel that something is happening — a flood, some connection to water — but it cannot resolve the full picture. Arriving at "riverbank eroding along a muddy shore" requires every layer\'s addition stacked on the one before.';
     } else {
-      insightText.textContent = 'Close — each missing layer removes a piece of the puzzle. The residual stream needs all layers contributing for bank to fully resolve as a natural landform.';
+      insightText.textContent = 'Close — one layer\'s addition is missing, and that gap shows in the answer. Every layer contributes a piece that the next one builds on. Remove one and the chain has a hole that nothing else can fill.';
     }
   }
 }
@@ -663,9 +663,9 @@ function toggleNorm() {
     const insight = document.getElementById('r3insight');
     const insightText = document.getElementById('r3insightText');
     insight.style.display = 'block';
-    insightText.textContent = normOn
-      ? 'With normalization, the residual stream is balanced. The original embedding and all layer updates contribute proportionally — no single signal monopolizes the prediction.'
-      : 'Without normalization, the loudest update wins by default. The model ignores most of what it learned and just amplifies the strongest signal. This would get worse with more layers.';
+    insightText.innerHTML = normOn
+      ? 'You turned it on, and the flood signal stopped dominating. The original embedding and every layer\'s addition can now be heard in proportion. No single contribution drowns the others. This balancing step is called layer normalization.'
+      : 'You turned it off, and <em>flood</em> overwhelmed everything. The model has learned from shore, muddy, eroded — but when one signal is ×12.4 louder than the rest, those quieter additions are drowned out. Stack more layers and the problem compounds: the loudest signal just keeps winning.';
   }
 }
 
@@ -682,6 +682,7 @@ function goClose() {
   show('closing');
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
+if (new URLSearchParams(location.search).has('play')) startGame();
 </script>
   <div class="mc-hotbar">
     <a href="the-gate.html" class="mc-hotbar-slot">
