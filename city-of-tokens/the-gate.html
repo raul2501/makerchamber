@@ -645,6 +645,10 @@ body {
 }
 .mc-hotbar-slot.current .mc-hotbar-label { color: #FFC107; }
 
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+
 </style>
 </head>
 <body>
