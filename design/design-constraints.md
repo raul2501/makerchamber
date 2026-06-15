@@ -11,7 +11,7 @@ player that makes the rule non-negotiable).
 
 How this differs from `pillars.md`: pillars are **generative** — read them at the
 start to derive what to build. Constraints are **evaluative** — run them at the
-end to reject what doesn't belong. Both serve the same player; one creates, one
+end to highlight what doesn't belong. Both serve the same player; one creates, one
 filters.
 
 ---
