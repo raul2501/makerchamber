@@ -58,6 +58,14 @@ Every task follows: **Question → Options → Decision → Draft → Approval**
 
 @design/pillars.md
 
+## Design Constraints
+
+Hard, non-negotiable boundaries on every player-facing change. Pillars are
+generative (what to build); constraints are evaluative (what to reject). Run
+these as a pass/fail review gate before shipping any copy, mechanic, or screen.
+
+@design/design-constraints.md
+
 ## Context Management
 
 @.claude/docs/context-management.md
