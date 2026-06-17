@@ -1,0 +1,13 @@
+{
+  "game": "city-of-tokens",
+  "levels": [
+    { "id": "the-gate",          "file": "city-of-tokens/the-gate.html",          "name": "The Gate — Tokenization",            "coreInteraction": "Slash (press-drag) across a held-back red piece in the arena; assert it splits at the nearest gap, valid sub-pieces move to the through-side (green), and the Pass button appears once all pieces are valid. First word 'hello' is already valid (zero-slash pass).", "storageKey": null },
+    { "id": "the-map-room",      "file": "city-of-tokens/the-map-room.html",      "name": "The Map Room — Positional Encoding", "coreInteraction": "TODO", "storageKey": null },
+    { "id": "the-census-bureau", "file": "city-of-tokens/the-census-bureau.html", "name": "The Census Bureau — Attention Scores", "coreInteraction": "TODO", "storageKey": null },
+    { "id": "the-town-square",   "file": "city-of-tokens/the-town-square.html",   "name": "The Town Square — Self-Attention",   "coreInteraction": "TODO", "storageKey": null },
+    { "id": "the-thread",        "file": "city-of-tokens/the-thread.html",        "name": "The Thread — Residual Connections",  "coreInteraction": "TODO", "storageKey": null },
+    { "id": "the-library",       "file": "city-of-tokens/the-library.html",       "name": "The Library — Feed-Forward Network", "coreInteraction": "TODO", "storageKey": null },
+    { "id": "the-tower",         "file": "city-of-tokens/the-tower.html",         "name": "The Tower — Layer Stacking",         "coreInteraction": "TODO", "storageKey": null },
+    { "id": "the-oracle",        "file": "city-of-tokens/the-oracle.html",        "name": "The Oracle — Output / Prediction",   "coreInteraction": "TODO", "storageKey": null }
+  ]
+}
