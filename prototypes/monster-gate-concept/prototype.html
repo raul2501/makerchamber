@@ -1,0 +1,687 @@
+<!-- PROTOTYPE - NOT FOR PRODUCTION -->
+<!-- Question: Does the "word = beast you slash into registered pieces" reskin keep the slash mechanic's feel AND its deterministic, no-score truth? -->
+<!-- Date: 2026-06-16 -->
+<!-- Reuses the validated slash engine + o200k-verified data from city-of-tokens/the-gate.html, verbatim. -->
+<!-- Reskin only: letters = a living creature's segments; a cut piece that's a registered Ledger token is SLAIN; non-token pieces stay alive (red, writhing). No score, no health bar (per design 2026-06-16). -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Slash the Word-Beast — Prototype</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: radial-gradient(120% 80% at 50% 0%, #241414 0%, #160d0d 55%, #100a0a 100%);
+  color: #eee;
+  font-family: 'Fraunces', serif;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 16px env(safe-area-inset-bottom);
+  overflow-x: hidden;
+}
+
+.screen { display: none; width: 100%; max-width: 720px; }
+.screen.active { display: flex; flex-direction: column; }
+
+.stage-wrap { display: flex; flex-direction: column; align-items: center; margin: 28px 0 0; }
+
+.word-label {
+  font-size: 11px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: #b06a6a;
+  margin-bottom: 18px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── ARENA (the whole surface is the blade) ── */
+.arena {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  min-height: 260px;
+  position: relative;
+  touch-action: none;   /* static — stop mobile stealing the slash as a scroll */
+  user-select: none;
+  cursor: crosshair;
+}
+
+/* Living beast parts live here */
+.beast-alive {
+  width: 100%;
+  min-height: 110px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 12px 20px;
+}
+
+/* Slain pile */
+.slain-tray-wrap {
+  width: 100%;
+  border-top: 1px dashed #3a2222;
+  margin-top: 8px;
+  padding-top: 12px;
+}
+.slain-label {
+  font-size: 9px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #5a4a4a;
+  text-align: center;
+  margin-bottom: 8px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.beast-slain {
+  width: 100%;
+  min-height: 52px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── PIECE CHIPS ── letters stay a CLEAN TEXT NODE; decoration is pseudo-only ── */
+.piece {
+  position: relative;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 26px;
+  font-weight: 600;
+  padding: 12px 16px 10px;
+  border-radius: 6px 6px 4px 4px;
+  border: 2px solid;
+  white-space: nowrap;
+  user-select: none;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease, background 0.2s, border-color 0.2s, color 0.2s;
+}
+.piece.piece-enter { opacity: 0; transform: scale(0.8); }
+
+/* ALIVE: a writhing, red-eyed monster segment */
+.piece.held-back {
+  background: linear-gradient(180deg, #3a0e0e, #260808);
+  border-color: #8a2424;
+  color: #ff8a8a;
+  cursor: crosshair;
+  touch-action: none;
+  animation: writhe 1.3s ease-in-out infinite, menace 1.7s ease-in-out infinite;
+}
+/* two eyes */
+.piece.held-back::before,
+.piece.held-back::after {
+  content: '';
+  position: absolute;
+  top: -7px;
+  width: 11px; height: 11px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 45%, #1a0000 0 2.5px, #ffd0d0 2.5px 4.5px, #e02828 4.5px 100%);
+  box-shadow: 0 0 6px rgba(224,40,40,0.8);
+  animation: blink 4.2s ease-in-out infinite;
+}
+.piece.held-back::before { left: 26%; }
+.piece.held-back::after  { right: 26%; }
+
+/* SLAIN: greyed, dead, piled */
+.piece.valid {
+  background: #14160f;
+  border-color: #2f3a22;
+  color: #7f8a66;
+  filter: grayscale(0.5);
+  font-size: 18px;
+  padding: 7px 12px;
+}
+/* dead X-eyes on a freshly slain piece while it sits in the alive zone briefly */
+.piece.slaying { animation: slay 0.45s ease-out; }
+
+@keyframes writhe {
+  0%, 100% { transform: rotate(-1.6deg) translateY(0); }
+  50%      { transform: rotate(1.6deg) translateY(-2px); }
+}
+@keyframes menace {
+  0%, 100% { box-shadow: 0 0 7px rgba(224,40,40,0.35), inset 0 0 8px rgba(0,0,0,0.5); }
+  50%      { box-shadow: 0 0 20px rgba(224,40,40,0.85), inset 0 0 8px rgba(0,0,0,0.5); }
+}
+@keyframes blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95%           { transform: scaleY(0.1); }
+}
+@keyframes slay {
+  0%   { transform: scale(1); filter: brightness(1); }
+  25%  { transform: scale(1.28) rotate(-5deg); filter: brightness(2.4) saturate(0.4); }
+  60%  { transform: scale(0.92) rotate(3deg); }
+  100% { transform: scale(1); filter: grayscale(0.5); }
+}
+
+/* ── SLASH SVG OVERLAY ── */
+#slash-svg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 100; }
+
+/* ── HIT FLASH ── */
+#hit-flash {
+  position: fixed; inset: 0;
+  background: radial-gradient(circle at 50% 45%, rgba(255,180,60,0.28), rgba(224,40,40,0.12) 40%, transparent 70%);
+  opacity: 0; pointer-events: none; z-index: 90;
+  transition: opacity 0.08s ease-out;
+}
+#hit-flash.flash { opacity: 1; transition: opacity 0s; }
+
+/* ── LEDGER ── */
+.ledger-panel {
+  width: 100%;
+  background: rgba(30,20,20,0.7);
+  border: 1px solid #3a2626;
+  border-radius: 4px;
+  padding: 14px 16px;
+  margin-top: 22px;
+}
+.ledger-title {
+  font-size: 9px; letter-spacing: 3px; text-transform: uppercase;
+  color: #9a7a7a; margin-bottom: 10px; font-family: 'JetBrains Mono', monospace;
+}
+.ledger-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ledger-chip {
+  font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 4px 10px;
+  background: #160f0f; border: 1px solid #422c2c; border-radius: 3px; color: #b09a9a;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.ledger-chip.lit { border-color: #4a7020; color: #9bd860; background: #0e1a04; }
+
+/* ── HINT ── */
+.hint {
+  text-align: center; font-size: 13px; color: #a08080; margin-top: 20px;
+  font-family: 'JetBrains Mono', monospace; min-height: 20px;
+}
+
+/* ── ACTIONS ── */
+.action-row { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 18px; }
+.pass-btn {
+  display: none; padding: 14px 44px;
+  background: linear-gradient(180deg, #8a1f1f, #5e1414); color: #ffd9d9;
+  border: 1px solid #b04040; font-family: 'Fraunces', serif; font-size: 17px; font-weight: 600;
+  cursor: pointer; border-radius: 3px; touch-action: manipulation;
+  box-shadow: 0 0 16px rgba(224,40,40,0.4); transition: background 0.15s, box-shadow 0.15s;
+}
+.pass-btn:hover { background: linear-gradient(180deg, #a02828, #6e1818); box-shadow: 0 0 24px rgba(224,40,40,0.6); }
+.pass-btn.visible { display: block; }
+.reset-btn {
+  padding: 8px 18px; background: transparent; color: #8a7070; border: 1px solid #422c2c;
+  font-family: 'JetBrains Mono', monospace; font-size: 12px; cursor: pointer; border-radius: 2px;
+  touch-action: manipulation; transition: border-color 0.15s, color 0.15s;
+}
+.reset-btn:hover { border-color: #8a7070; color: #ccc; }
+.reset-btn:disabled { opacity: 0.4; cursor: default; }
+.ghost-row { display: flex; gap: 10px; justify-content: center; }
+
+/* ── REVEAL ── */
+#reveal { gap: 24px; padding: 32px 0; }
+.reveal-word { font-family: 'JetBrains Mono', monospace; font-size: 28px; color: #ff9a4a; text-align: center; font-weight: 600; }
+.reveal-contrast { display: flex; flex-direction: column; gap: 20px; }
+.reveal-row { display: flex; flex-direction: column; gap: 8px; }
+.reveal-row-label { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #9a7a7a; font-family: 'JetBrains Mono', monospace; }
+.reveal-chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.reveal-chip { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 600; padding: 8px 14px; border-radius: 3px; }
+.reveal-chip.model { background: #1f0a0a; border: 2px solid #b04040; color: #ff9a9a; }
+.reveal-chip.player-same { background: #1f0a0a; border: 2px dashed #b04040; color: #ff9a9a; opacity: 0.7; }
+.reveal-chip.player-diff { background: #2a2a0a; border: 2px dashed #7a6820; color: #c0a840; opacity: 0.8; }
+.reveal-insight { background: rgba(40,20,20,0.6); border: 1px solid #4a2a2a; border-radius: 4px; padding: 18px 20px; }
+.reveal-insight-label { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #d08040; margin-bottom: 10px; font-family: 'JetBrains Mono', monospace; }
+.reveal-insight-text { font-size: 14px; color: #e8c080; line-height: 1.75; font-family: 'JetBrains Mono', monospace; }
+.next-btn {
+  display: block; padding: 14px 48px; background: #3a5870; color: #80c8e8; border: none;
+  font-family: 'Fraunces', serif; font-size: 17px; font-weight: 600; cursor: pointer; border-radius: 2px;
+  align-self: center; touch-action: manipulation; transition: background 0.15s;
+}
+.next-btn:hover { background: #4a6880; }
+
+/* ── DONE ── */
+#done { gap: 20px; padding: 40px 0; align-items: center; text-align: center; }
+.done-title { font-size: 42px; font-weight: 300; color: #ff7a4a; line-height: 1; }
+.done-body { font-size: 14px; color: #c8b0b0; line-height: 1.85; max-width: 480px; font-family: 'JetBrains Mono', monospace; }
+.done-body strong { color: #ff9a4a; }
+.replay-btn {
+  padding: 14px 48px; background: #8a1f1f; color: #ffd9d9; border: 1px solid #b04040;
+  font-family: 'Fraunces', serif; font-size: 17px; font-weight: 600; cursor: pointer; border-radius: 3px;
+  touch-action: manipulation; transition: background 0.15s;
+}
+.replay-btn:hover { background: #a02828; }
+
+/* ── DEBUG ── */
+#debug-bar {
+  position: fixed; bottom: env(safe-area-inset-bottom, 0); left: 0; right: 0;
+  background: rgba(0,0,0,0.85); color: #FFC107; font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; padding: 4px 12px; text-align: center; z-index: 200; pointer-events: none; display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+@media (max-width: 520px) {
+  .piece { font-size: 20px; padding: 10px 12px 8px; }
+  .reveal-chip { font-size: 15px; padding: 6px 10px; }
+  .reveal-insight-text { font-size: 13px; }
+}
+</style>
+</head>
+<body>
+
+<svg id="slash-svg" aria-hidden="true"></svg>
+<div id="hit-flash"></div>
+<div id="debug-bar"></div>
+
+<!-- ══════════════ GAME ══════════════ -->
+<div id="game" class="screen active">
+  <div class="stage-wrap">
+    <div class="word-label" id="word-label">—</div>
+    <div class="arena" id="arena">
+      <div class="beast-alive" id="beast-alive"></div>
+      <div class="slain-tray-wrap">
+        <div class="slain-label">— slain —</div>
+        <div class="beast-slain" id="beast-slain"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ledger-panel">
+    <div class="ledger-title">The Ledger — a piece only dies if it's listed here</div>
+    <div class="ledger-chips" id="ledger-chips"></div>
+  </div>
+
+  <div class="hint" id="hint-text"></div>
+  <div class="action-row">
+    <button class="pass-btn" id="pass-btn">⚔ Finish the beast →</button>
+    <div class="ghost-row">
+      <button class="reset-btn" id="undo-btn">↶ Undo slash</button>
+      <button class="reset-btn" id="reset-btn">↺ Revive word</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ REVEAL ══════════════ -->
+<div id="reveal" class="screen">
+  <div class="reveal-word" id="reveal-word"></div>
+  <div class="reveal-contrast">
+    <div class="reveal-row">
+      <div class="reveal-row-label">Where you struck</div>
+      <div class="reveal-chips" id="reveal-player-chips"></div>
+    </div>
+    <div class="reveal-row">
+      <div class="reveal-row-label">Its true weak points (how the model cuts it)</div>
+      <div class="reveal-chips" id="reveal-model-chips"></div>
+    </div>
+  </div>
+  <div class="reveal-insight">
+    <div class="reveal-insight-label">Why there?</div>
+    <div class="reveal-insight-text" id="reveal-insight-text"></div>
+  </div>
+  <button class="next-btn" id="next-btn">Next beast →</button>
+</div>
+
+<!-- ══════════════ DONE ══════════════ -->
+<div id="done" class="screen">
+  <div class="done-title">All beasts slain.</div>
+  <div class="done-body">
+    Each beast's weak points were just its <strong>tokens</strong> — the registered pieces
+    it breaks into.<br><br>
+    That breaking-apart is called <strong>tokenization</strong>: it happens to every word
+    before a model reads it, decided by frequency, not meaning.
+  </div>
+  <button class="replay-btn" id="replay-btn">Hunt again</button>
+</div>
+
+<script>
+'use strict';
+
+// ── TUNING ──
+const TUNING = {
+  MIN_SWIPE: 16, HIT_PAD_Y: 14, HIT_PAD_X: 6, TRAIL_FADE_MS: 200, TRAIL_REMOVE_MS: 260,
+  HIT_FLASH_MS: 110, SLAY_ANIM_MS: 450,
+};
+
+// ── DATA (o200k / GPT-4o verified — identical to production the-gate.html; copy reskinned) ──
+const ROUNDS = [
+  {
+    word: 'hello', correct: ['hello'],
+    vocab: ['hello', 'ello', 'hell', 'ell', 'hel', 'llo', 'el', 'he', 'll', 'lo', 'e', 'h', 'l', 'o'],
+    insight: '"hello" is so common it earned one whole slot in the Ledger — it dies in one piece, no cutting. The most frequent words are a single token.'
+  },
+  {
+    word: 'unhappy', correct: ['un', 'happy'],
+    vocab: ['happy', 'appy', 'app', 'hap', 'ppy', 'ap', 'ha', 'nh', 'pp', 'py', 'un', 'a', 'h', 'n', 'p', 'u', 'y'],
+    insight: '"un" appears in so many words — undo, unreal, unlock — it earned its own slot, and "happy" is common on its own. Two weak points, decided by frequency, not grammar.'
+  },
+  {
+    word: 'ChatGPT', correct: ['Chat', 'GPT'],
+    vocab: ['Chat', 'Cha', 'GPT', 'hat', 'Ch', 'GP', 'PT', 'at', 'ha', 'C', 'G', 'P', 'T', 'a', 'h', 't'],
+    insight: '"GPT" showed up so often the Ledger grew a slot just for it — so the beast splits Chat + GPT. The vocabulary keeps changing to fit what people actually write.'
+  },
+  {
+    word: 'unbelievable', correct: ['un', 'bel', 'ievable'],
+    vocab: ['ievable', 'able', 'elie', 'abl', 'bel', 'ble', 'eli', 'eva', 'iev', 'lie', 'ab', 'be', 'bl', 'el', 'ev', 'ie', 'le', 'li', 'nb', 'un', 'va', 'a', 'b', 'e', 'i', 'l', 'n', 'u', 'v'],
+    insight: 'Its weak points fall at "bel" | "ievable" — slicing the word "believe" right down the middle. The Ledger never knew what the word means; those are simply the chunks that showed up most often.'
+  },
+  {
+    word: 'preprocessing', correct: ['pre', 'processing'],
+    vocab: ['processing', 'rocessing', 'process', 'essing', 'proces', 'rocess', 'essin', 'cess', 'essi', 'oces', 'prep', 'proc', 'repr', 'sing', 'ces', 'ess', 'ing', 'oce', 'pre', 'pro', 'rep', 'roc', 'sin', 'ssi', 'ce', 'ep', 'es', 'in', 'ng', 'oc', 'pr', 're', 'ro', 'si', 'ss', 'c', 'e', 'g', 'i', 'n', 'o', 'p', 'r', 's'],
+    insight: '"pre" is one of the most common prefixes there is, and "processing" is everywhere in technical text. Two weak points for thirteen letters — common chunks win.'
+  }
+];
+
+// ── STATE ──
+let roundIdx = 0;
+let currentWord = '';
+let cuts = new Set();
+let cutHistory = [];
+let playerSplit = [];
+const pieceEls = new Map();
+
+let slashActive = false, slashPath = [], slashAnimId = null, slashPolyline = null, activePointerId = null;
+
+const debugMode = new URLSearchParams(location.search).has('debug');
+function debugLog(msg) {
+  if (!debugMode) return;
+  const bar = document.getElementById('debug-bar');
+  bar.style.display = 'block';
+  bar.textContent = msg;
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function loadRound(idx) {
+  roundIdx = idx;
+  cuts = new Set(); cutHistory = []; playerSplit = [];
+  pieceEls.clear();
+  document.getElementById('beast-alive').innerHTML = '';
+  document.getElementById('beast-slain').innerHTML = '';
+  const round = ROUNDS[idx];
+  currentWord = round.word;
+  document.getElementById('word-label').textContent = round.word;
+  renderLedger(round);
+  renderGate();
+}
+
+function getAllSegments() {
+  const round = ROUNDS[roundIdx];
+  const sortedCuts = [...cuts].filter(c => c > 0 && c < currentWord.length).sort((a, b) => a - b);
+  const segs = [];
+  let start = 0;
+  for (const c of sortedCuts) { segs.push({ text: currentWord.slice(start, c), start, end: c }); start = c; }
+  segs.push({ text: currentWord.slice(start), start, end: currentWord.length });
+  return segs.map(s => ({ ...s, valid: round.vocab.includes(s.text) }));
+}
+
+// ── RENDER (keyed reconcile — unchanged from production; adds the "slain" death beat) ──
+function renderGate() {
+  const alive = document.getElementById('beast-alive');
+  const slain = document.getElementById('beast-slain');
+  const segs = getAllSegments();
+
+  let anyAlive = false, allSlain = segs.length > 0;
+  const desiredAlive = [], desiredSlain = [], desiredKeys = new Set(), freshEls = [], slainNow = [];
+
+  segs.forEach(seg => {
+    const key = seg.start + '-' + seg.end;
+    desiredKeys.add(key);
+    const existed = pieceEls.has(key);
+    let el = pieceEls.get(key);
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'piece piece-enter';
+      el.appendChild(document.createTextNode(seg.text)); // firstChild MUST be the text node (slash geometry reads it)
+      pieceEls.set(key, el);
+      freshEls.push(el);
+    }
+    const wasAlive = el.classList.contains('held-back');
+    el.dataset.start = String(seg.start);
+    el.classList.toggle('valid', seg.valid);
+    el.classList.toggle('held-back', !seg.valid);
+    // newly slain = became valid this render (was a live part, or born already-valid from a cut)
+    if (seg.valid && (wasAlive || !existed)) slainNow.push(el);
+    if (seg.valid) { desiredSlain.push(el); } else { desiredAlive.push(el); anyAlive = true; allSlain = false; }
+  });
+
+  for (const [key, el] of [...pieceEls]) {
+    if (!desiredKeys.has(key)) { el.remove(); pieceEls.delete(key); }
+  }
+
+  desiredAlive.forEach(el => alive.appendChild(el));
+  desiredSlain.forEach(el => slain.appendChild(el));
+
+  if (freshEls.length) requestAnimationFrame(() => freshEls.forEach(el => el.classList.remove('piece-enter')));
+
+  // death beat on freshly slain pieces
+  slainNow.forEach(el => {
+    el.classList.remove('slaying');
+    void el.offsetWidth;            // restart the animation
+    el.classList.add('slaying');
+    setTimeout(() => el.classList.remove('slaying'), TUNING.SLAY_ANIM_MS);
+  });
+
+  highlightLedger(segs.filter(s => s.valid).map(s => s.text));
+  document.getElementById('undo-btn').disabled = cutHistory.length === 0;
+
+  const passBtn = document.getElementById('pass-btn');
+  if (allSlain) {
+    passBtn.classList.add('visible');
+    setHint(cuts.size === 0
+      ? 'It was already a registered piece — it died whole. Finish it.'
+      : 'Every piece is slain. Finish the beast.');
+  } else {
+    passBtn.classList.remove('visible');
+    if (anyAlive) setHint('A red piece is still alive — it isn\'t in the Ledger. Slash it to cut it smaller.');
+  }
+}
+
+function renderLedger(round) {
+  const unique = [...new Set(round.vocab)].sort((a, b) => b.length - a.length || a.localeCompare(b));
+  document.getElementById('ledger-chips').innerHTML = unique
+    .map(v => `<div class="ledger-chip" data-vocab="${escapeHtml(v)}">${escapeHtml(v)}</div>`).join('');
+}
+function highlightLedger(matched) {
+  document.querySelectorAll('.ledger-chip').forEach(chip => chip.classList.toggle('lit', matched.includes(chip.dataset.vocab)));
+}
+function setHint(msg) { document.getElementById('hint-text').textContent = msg; }
+
+// ── SLASH INPUT (ported verbatim from the validated production build) ──
+function initArena() {
+  const arena = document.getElementById('arena');
+  arena.addEventListener('pointerdown', onPointerDown);
+  arena.addEventListener('pointermove', onPointerMove);
+  arena.addEventListener('pointerup', onPointerUp);
+  arena.addEventListener('pointercancel', onPointerCancel);
+}
+function onPointerDown(e) {
+  if (slashActive) return;
+  e.preventDefault();
+  const arena = document.getElementById('arena');
+  arena.setPointerCapture(e.pointerId);
+  activePointerId = e.pointerId;
+  slashActive = true;
+  slashPath = [{ x: e.clientX, y: e.clientY }];
+  const svg = document.getElementById('slash-svg');
+  slashPolyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+  slashPolyline.setAttribute('stroke', 'rgba(255,180,60,0.9)');
+  slashPolyline.setAttribute('stroke-width', '3');
+  slashPolyline.setAttribute('stroke-linecap', 'round');
+  slashPolyline.setAttribute('stroke-linejoin', 'round');
+  slashPolyline.setAttribute('fill', 'none');
+  slashPolyline.style.filter = 'drop-shadow(0 0 5px rgba(255,120,40,0.7))';
+  svg.appendChild(slashPolyline);
+  scheduleTrailDraw();
+}
+function onPointerMove(e) {
+  if (!slashActive || e.pointerId !== activePointerId) return;
+  e.preventDefault();
+  slashPath.push({ x: e.clientX, y: e.clientY });
+}
+function onPointerUp(e) {
+  if (!slashActive || e.pointerId !== activePointerId) return;
+  e.preventDefault();
+  slashActive = false; activePointerId = null;
+  if (slashAnimId) { cancelAnimationFrame(slashAnimId); slashAnimId = null; }
+  fadeOutTrail(slashPolyline); slashPolyline = null;
+  const path = slashPath; slashPath = [];
+  if (path.length < 2) return;
+  const dx = path[path.length - 1].x - path[0].x, dy = path[path.length - 1].y - path[0].y;
+  if (Math.sqrt(dx * dx + dy * dy) < TUNING.MIN_SWIPE) return;
+  resolveSlash(path);
+}
+function onPointerCancel() {
+  slashActive = false; activePointerId = null;
+  if (slashAnimId) { cancelAnimationFrame(slashAnimId); slashAnimId = null; }
+  fadeOutTrail(slashPolyline); slashPolyline = null; slashPath = [];
+}
+function fadeOutTrail(poly) {
+  if (!poly) return;
+  poly.style.transition = `opacity ${TUNING.TRAIL_FADE_MS}ms ease-out`;
+  requestAnimationFrame(() => { poly.style.opacity = '0'; });
+  setTimeout(() => poly.remove(), TUNING.TRAIL_REMOVE_MS);
+}
+function scheduleTrailDraw() {
+  if (!slashActive) return;
+  slashAnimId = requestAnimationFrame(() => {
+    if (slashPolyline && slashPath.length > 1) slashPolyline.setAttribute('points', slashPath.map(p => `${p.x},${p.y}`).join(' '));
+    scheduleTrailDraw();
+  });
+}
+
+function flashHit() {
+  const f = document.getElementById('hit-flash');
+  f.classList.add('flash');
+  requestAnimationFrame(() => { f.classList.remove('flash'); });
+}
+
+function resolveSlash(path) {
+  const chips = [...document.querySelectorAll('#beast-alive .piece.held-back')];
+  for (const chip of chips) {
+    const rect = chip.getBoundingClientRect();
+    const crossX = chipSlashX(path, rect);
+    if (crossX === null) continue;
+    const start = parseInt(chip.dataset.start, 10);
+    if (isNaN(start)) continue;
+    const localGap = findNearestGap(chip, crossX);
+    if (localGap === null) continue;
+    const wordGap = start + localGap;
+    if (!cuts.has(wordGap)) { cuts.add(wordGap); cutHistory.push(wordGap); }
+    flashHit();
+    debugLog(`struck "${chip.textContent}" at gap ${localGap} (word-pos ${wordGap})`);
+    renderGate();
+    return;
+  }
+  debugLog('slash missed — no live piece crossed');
+}
+
+function chipSlashX(path, rect) {
+  const padY = TUNING.HIT_PAD_Y, padX = TUNING.HIT_PAD_X, xs = [];
+  for (const p of path) {
+    if (p.y >= rect.top - padY && p.y <= rect.bottom + padY && p.x >= rect.left - padX && p.x <= rect.right + padX) {
+      xs.push(Math.max(rect.left, Math.min(rect.right, p.x)));
+    }
+  }
+  if (xs.length > 0) return xs[Math.floor(xs.length / 2)];
+  const midY = (rect.top + rect.bottom) / 2;
+  const cx = crossXAtMidY(path, midY);
+  if (cx >= rect.left && cx <= rect.right) return cx;
+  return null;
+}
+function crossXAtMidY(path, midY) {
+  for (let i = 1; i < path.length; i++) {
+    const p0 = path[i - 1], p1 = path[i];
+    if ((p0.y - midY) * (p1.y - midY) <= 0) {
+      const dy = p1.y - p0.y;
+      const t = Math.abs(dy) < 0.001 ? 0 : (midY - p0.y) / dy;
+      return p0.x + t * (p1.x - p0.x);
+    }
+  }
+  let best = path[0], bestD = Math.abs(path[0].y - midY);
+  for (const p of path) { const d = Math.abs(p.y - midY); if (d < bestD) { bestD = d; best = p; } }
+  return best.x;
+}
+function findNearestGap(el, clientX) {
+  const text = el.textContent, len = text.length;
+  if (len < 2) return null;
+  const centers = getCharCenters(el, text);
+  if (!centers || centers.length < 2) return null;
+  let bestGap = 1, bestDist = Infinity;
+  for (let g = 1; g <= len - 1; g++) {
+    const gapX = (centers[g - 1] + centers[g]) / 2;
+    const d = Math.abs(clientX - gapX);
+    if (d < bestDist) { bestDist = d; bestGap = g; }
+  }
+  return bestGap;
+}
+function getCharCenters(el, text) {
+  const textNode = el.firstChild, centers = [];
+  if (textNode && textNode.nodeType === Node.TEXT_NODE) {
+    const range = document.createRange();
+    for (let i = 0; i < text.length; i++) {
+      try {
+        range.setStart(textNode, i); range.setEnd(textNode, i + 1);
+        const rects = range.getClientRects();
+        if (rects.length > 0) { centers.push((rects[0].left + rects[0].right) / 2); continue; }
+      } catch (_) { /* fall through */ }
+      const r = el.getBoundingClientRect(), w = r.width / text.length;
+      centers.push(r.left + w * i + w / 2);
+    }
+  } else {
+    const r = el.getBoundingClientRect(), w = r.width / text.length;
+    for (let i = 0; i < text.length; i++) centers.push(r.left + w * i + w / 2);
+  }
+  return centers;
+}
+
+function undoLastCut() {
+  if (cutHistory.length === 0) return;
+  cuts.delete(cutHistory.pop());
+  renderGate();
+}
+function passThrough() { playerSplit = getAllSegments().map(s => s.text); showReveal(); }
+
+function showReveal() {
+  const round = ROUNDS[roundIdx];
+  document.getElementById('reveal-word').textContent = round.word;
+  const modelSplit = round.correct;
+  const pc = document.getElementById('reveal-player-chips'); pc.innerHTML = '';
+  playerSplit.forEach(seg => {
+    const el = document.createElement('div');
+    el.className = 'reveal-chip ' + (modelSplit.includes(seg) ? 'player-same' : 'player-diff');
+    el.textContent = seg; pc.appendChild(el);
+  });
+  const mc = document.getElementById('reveal-model-chips'); mc.innerHTML = '';
+  modelSplit.forEach(seg => {
+    const el = document.createElement('div'); el.className = 'reveal-chip model';
+    el.textContent = seg; mc.appendChild(el);
+  });
+  document.getElementById('reveal-insight-text').textContent = round.insight;
+  document.getElementById('next-btn').textContent = roundIdx === ROUNDS.length - 1 ? 'Done →' : 'Next beast →';
+  showScreen('reveal');
+}
+function nextRound() {
+  if (roundIdx >= ROUNDS.length - 1) showScreen('done');
+  else { showScreen('game'); loadRound(roundIdx + 1); }
+}
+function escapeHtml(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;');
+}
+
+document.getElementById('pass-btn').addEventListener('click', passThrough);
+document.getElementById('next-btn').addEventListener('click', nextRound);
+document.getElementById('undo-btn').addEventListener('click', undoLastCut);
+document.getElementById('reset-btn').addEventListener('click', () => loadRound(roundIdx));
+document.getElementById('replay-btn').addEventListener('click', () => { showScreen('game'); loadRound(0); });
+
+initArena();
+loadRound(0);
+</script>
+</body>
+</html>
