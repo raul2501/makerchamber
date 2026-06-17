@@ -2,1241 +2,1116 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The Gate — Level 1: Tokenization</title>
-<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Fraunces:opsz,wght@9..144,300;9..144,600&family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Gate — City of Tokens</title>
+<!--
+  Level 1: The Gate — Tokenization (slash-to-tokenize mechanic).
+  Source of truth: city-of-tokens/game-design-docs/the-gate-slash-mechanic-spec.md
+  Word data verified against the real o200k (GPT-4o) tokenizer via tiktoken (2026-06-16).
+  Supersedes the prior click-to-split build.
+
+  TODO(a11y) — spec §5: the slash is a drag gesture with NO non-drag path. Production
+  for public release MUST add an accessible alternative (distinct tap-gap mode or
+  keyboard gap navigation) — NOT tap-to-cut (it caused premature cuts). Deferred for
+  local playtest; required before any public Vercel push.
+-->
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
+/* ── RESET ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  background: #2C2C2C;
-  color: #FFFFFF;
-  font-family: 'Inter', sans-serif;
-  min-height: 100vh;
+  background: #1a1a1a;
+  color: #eee;
+  font-family: 'Fraunces', serif;
+  min-height: 100dvh;
   display: flex;
-  align-items: center;
   flex-direction: column;
-  padding: 24px;
+  align-items: center;
+  padding: 24px 16px env(safe-area-inset-bottom);
+  overflow-x: hidden;
 }
 
-.screen { display: none; width: 100%; max-width: 880px; }
-.screen.active { display: block; }
+/* ── LAYOUT ── */
+.screen { display: none; width: 100%; max-width: 720px; }
+.screen.active { display: flex; flex-direction: column; }
 
-/* ── SHARED ── */
-.eyebrow {
+/* ── INTRO SCREEN ── */
+#intro { align-items: center; text-align: center; padding: 56px 0; }
+.intro-wrap { max-width: 480px; display: flex; flex-direction: column; align-items: center; }
+.intro-eyebrow { font-size: 11px; letter-spacing: 5px; text-transform: uppercase; color: #888; font-family: 'JetBrains Mono', monospace; margin-bottom: 14px; }
+.intro-title { font-size: 50px; font-weight: 300; color: #FFC107; line-height: 1; margin-bottom: 26px; }
+.intro-line { font-size: 15px; color: #d0d0d0; line-height: 1.7; margin-bottom: 18px; font-family: 'JetBrains Mono', monospace; }
+.intro-line strong { color: #FFC107; font-weight: 600; }
+.intro-btn { margin-top: 14px; padding: 14px 42px; background: #3a6820; color: #c8f080; border: none; font-family: 'Fraunces', serif; font-size: 17px; font-weight: 600; cursor: pointer; border-radius: 2px; touch-action: manipulation; transition: background 0.15s; }
+.intro-btn:hover { background: #4a8030; }
+
+/* ── WORD STAGE ── */
+.stage-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  margin: 32px 0 0;
+}
+
+.word-label {
   font-size: 11px;
   letter-spacing: 4px;
   text-transform: uppercase;
-  color: #CCCCCC;
-  margin-bottom: 16px;
+  color: #888;
+  margin-bottom: 20px;
+  font-family: 'JetBrains Mono', monospace;
 }
 
-.big-title {
-  font-family: 'Fraunces', serif;
-  font-size: 60px;
-  font-weight: 300;
+/* ── THE GATE VISUAL ── */
+.gate-scene {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  min-height: 260px;
+  position: relative;
+  /* The whole arena is the slash surface. Static touch-action:none here is what
+     stops mobile browsers from stealing a slash as a page scroll. */
+  touch-action: none;
+  user-select: none;
+  cursor: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='22' height='30' viewBox='0 0 22 30'><rect x='8' y='0' width='6' height='8' rx='2' fill='%238a5a2a'/><rect x='4' y='7' width='14' height='3' rx='1.5' fill='%239aa3ad'/><polygon points='7,10 15,10 11,29' fill='%23eef2f6' stroke='%236b7480' stroke-width='0.6'/></svg>") 11 28, crosshair;
+}
+
+/* Entry zone — held-back pieces sit here */
+.gate-entry {
+  width: 100%;
+  min-height: 80px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 12px 12px 16px;
+  position: relative;
+}
+
+/* The Gate bar itself */
+.gate-bar {
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(90deg, transparent 0%, #FFC107 20%, #FFC107 80%, transparent 100%);
+  position: relative;
+  flex-shrink: 0;
+}
+.gate-bar::before {
+  content: 'THE GATE';
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%) translateY(-50%);
+  top: 50%;
+  font-size: 9px;
+  letter-spacing: 3px;
+  font-family: 'JetBrains Mono', monospace;
   color: #FFC107;
-  line-height: 1;
-  margin-bottom: 10px;
+  background: #1a1a1a;
+  padding: 0 8px;
 }
 
-.divider {
-  width: 48px;
-  height: 1px;
-  background: #2a1f10;
-  margin: 24px auto;
+/* Through zone — valid pieces sit here */
+.gate-through {
+  width: 100%;
+  min-height: 72px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 16px 12px 12px;
 }
 
-.section-label {
-  font-size: 10px;
+/* ── PIECE CHIPS ── */
+.piece {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 26px;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: 3px;
+  border: 2px solid;
+  white-space: nowrap;
+  user-select: none;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease;
+}
+/* Freshly created pieces (a fresh cut) pop in; unchanged pieces never get this. */
+.piece.piece-enter { opacity: 0; transform: scale(0.8); }
+
+/* Held-back: red-tinted, entry side. touch-action:none is STATIC so the
+   browser does not steal the slash as a scroll on mobile. */
+.piece.held-back {
+  background: #2a0a0a;
+  border-color: #7a2020;
+  color: #e06060;
+  cursor: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='22' height='30' viewBox='0 0 22 30'><rect x='8' y='0' width='6' height='8' rx='2' fill='%238a5a2a'/><rect x='4' y='7' width='14' height='3' rx='1.5' fill='%239aa3ad'/><polygon points='7,10 15,10 11,29' fill='%23eef2f6' stroke='%236b7480' stroke-width='0.6'/></svg>") 11 28, crosshair;
+  touch-action: none;
+}
+/* Valid: green-tinted, through side */
+.piece.valid {
+  background: #0a1f08;
+  border-color: #3a6820;
+  color: #80d840;
+}
+
+/* Slash SVG overlay */
+#slash-svg {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 100;
+}
+
+/* ── SLASH AFFORDANCE CUE — wordless "chop DOWN to cut" hint on the first red word.
+   Vertical, because the slash is a downward chop, not a sideways drag. ── */
+#slash-hint { position: fixed; pointer-events: none; z-index: 90; opacity: 0; transition: opacity 0.3s ease; }
+#slash-hint.show { opacity: 1; }
+.sh-line {
+  position: absolute; top: 0; bottom: 0; left: 50%;
+  border-left: 2px dashed rgba(255, 200, 90, 0.5);
+  transform: translateX(-50%);
+}
+.sh-blade {
+  position: absolute; left: 50%; top: 0;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 0 7px rgba(255, 170, 60, 0.9));
+  animation: sh-chop 1.8s cubic-bezier(0.45, 0, 0.5, 1) infinite;
+}
+@keyframes sh-chop {
+  0%   { top: 0%;   opacity: 0; }
+  15%  { opacity: 1; }
+  82%  { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+/* ── LEDGER PANEL ── */
+.ledger-panel {
+  width: 100%;
+  background: #242424;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 14px 16px;
+  margin-top: 24px;
+}
+.ledger-title {
+  font-size: 9px;
   letter-spacing: 3px;
   text-transform: uppercase;
-  color: #AAAAAA;
+  color: #888;
   margin-bottom: 10px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.ledger-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ledger-chip {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  padding: 4px 10px;
+  background: #1a1a1a;
+  border: 1px solid #444;
+  border-radius: 3px;
+  color: #aaa;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.ledger-chip.lit {
+  border-color: #4a7020;
+  color: #80d840;
+  background: #0e1a04;
 }
 
-.btn-primary {
-  display: inline-block;
-  padding: 13px 40px;
-  background: #5D8733;
-  color: #0d0a06;
+/* ── INSTRUCTION HINT ── */
+.hint {
+  text-align: center;
+  font-size: 13px;
+  color: #777;
+  margin-top: 20px;
+  font-family: 'JetBrains Mono', monospace;
+  min-height: 20px;
+}
+
+/* ── ACTION ROW ── */
+.action-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+/* ── PASS BUTTON ── */
+.pass-btn {
+  display: none;
+  padding: 14px 48px;
+  background: #3a6820;
+  color: #c8f080;
   border: none;
   font-family: 'Fraunces', serif;
   font-size: 17px;
   font-weight: 600;
   cursor: pointer;
-  border-radius: 0;
-  transition: background 0.15s, transform 0.1s;
-}
-.btn-primary:hover { background: #6B9E38; transform: none; } .btn-primary:active { border-top-color: #2A5A18; border-left-color: #2A5A18; border-bottom-color: #8DB360; border-right-color: #8DB360; }
-
-.btn-primary:disabled { background: #3A3A3A; color: #666666; cursor: not-allowed; border-color: #2A2A2A; border-radius: 0; }
-
-.btn-ghost {
-  display: inline-block;
-  padding: 11px 32px;
-  background: transparent;
-  color: #BBBBBB;
-  border: 1px solid #555555;
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
-  cursor: pointer;
-  border-radius: 0;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
-}
-.btn-ghost:hover { border-color: #FFC107; color: #FFC107; background: #6A6A6A; }
-
-/* ── INTRO SCREEN 1: What are tokens ── */
-#intro1 { padding: 48px 0; }
-
-.intro-centered { text-align: center; }
-
-.intro-body {
-  max-width: 520px;
-  margin: 0 auto;
-  color: #DDDDDD;
-  font-size: 15px;
-  line-height: 1.85;
-}
-
-.token-demo {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: center;
-  margin: 28px 0;
-}
-
-.token-pill {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 15px;
-  padding: 8px 14px;
-  border-radius: 0;
-  border: 1px solid #3a5818;
-  background: #0e1f05;
-  color: #80FF20;
-}
-
-.token-pill.muted {
-  border-color: #2a1f10;
-  background: #5D5D5D;
-  color: #CCCCCC;
-}
-
-.token-id-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: center;
-  margin-top: 8px;
-}
-
-.token-id {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: #AAAAAA;
-  width: 60px;
-  text-align: center;
-}
-
-.callout {
-  background: #5D5D5D;
-  border: 1px solid #3A3A3A;
-  border-radius: 0;
-  padding: 20px 24px;
-  margin: 24px auto;
-  max-width: 540px;
-  text-align: left;
-  font-size: 14px;
-  color: #DDDDDD;
-  line-height: 1.75;
-}
-
-.callout strong { color: #FFC107; }
-
-.intro-nav {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-  margin-top: 40px;
-}
-
-/* ── INTRO SCREEN 2: How the game works ── */
-#intro2 { padding: 40px 0; }
-
-.how-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 16px;
-  margin: 28px 0;
-}
-
-.how-card {
-  background: #5D5D5D;
-  border: 1px solid #3A3A3A;
-  border-radius: 0;
-  padding: 20px 18px;
-}
-
-.how-number {
-  font-family: 'Fraunces', serif;
-  font-size: 32px;
-  color: #FFC107;
-  opacity: 0.4;
-  line-height: 1;
-  margin-bottom: 10px;
-}
-
-.how-card-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #c9a060;
-  margin-bottom: 8px;
-}
-
-.how-card-body {
-  font-size: 13px;
-  color: #BBBBBB;
-  line-height: 1.65;
-}
-
-.example-split-demo {
-  background: #5D5D5D;
-  border: 1px solid #3A3A3A;
-  border-radius: 0;
-  padding: 24px;
-  margin: 24px 0;
-}
-
-.demo-label {
-  font-size: 10px;
-  letter-spacing: 3px;
-  text-transform: uppercase;
-  color: #AAAAAA;
-  margin-bottom: 14px;
-}
-
-.demo-word-row {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-}
-
-.demo-char {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 24px;
-  font-weight: 600;
-  color: #FFFFFF;
-  width: 26px;
-  text-align: center;
-}
-
-.demo-gap-active {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 18px;
-  color: #FFC107;
-  width: 14px;
-  text-align: center;
-}
-
-.demo-gap-dot {
-  width: 14px;
-  text-align: center;
-  color: #2a1f10;
-  font-size: 10px;
-}
-
-.demo-result {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.demo-chip {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 15px;
-  padding: 6px 12px;
-  border-radius: 0;
-}
-.demo-chip.good { background: #0e1f05; border: 1px solid #3a5818; color: #80FF20; }
-.demo-chip.bad  { background: #1f0505; border: 1px solid #5a1818; color: #c04040; }
-
-.demo-arrow { color: #AAAAAA; font-size: 14px; }
-
-.scoring-legend {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 10px 16px;
-  background: #5D5D5D;
-  border: 1px solid #3A3A3A;
-  border-radius: 0;
-  padding: 20px 24px;
-  margin: 20px 0;
-  align-items: start;
-}
-
-.legend-stars { font-size: 16px; letter-spacing: 2px; white-space: nowrap; }
-.legend-text  { font-size: 13px; color: #AAAAAA; line-height: 1.5; }
-.legend-stars.gold { color: #FFC107; }
-.legend-stars.dim  { color: #AAAAAA; }
-
-/* ── GAME SCREEN ── */
-.game-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-bottom: 20px;
-  border-bottom: 1px solid #3A3A3A;
-  margin-bottom: 24px;
-}
-
-.game-logo {
-  font-family: 'Fraunces', serif;
-  font-size: 17px;
-  font-weight: 300;
-  color: #FFC107;
-}
-
-.progress-dots {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  border: 1px solid #555555;
-  background: transparent;
-  transition: background 0.2s, box-shadow 0.2s;
-}
-.dot.done-3 { background: #80FF20; box-shadow: inset 0 1px 0 rgba(255,255,255,0.3); }
-.dot.done-1 { background: #E04040; box-shadow: inset 0 1px 0 rgba(255,255,255,0.15); }
-.dot.current { background: #3A8800; box-shadow: inset 0 1px 0 rgba(255,255,255,0.15); }
-
-.round-label { font-size: 12px; color: #AAAAAA; }
-
-.game-layout {
-  display: grid;
-  grid-template-columns: 1fr 248px;
-  gap: 20px;
-  align-items: start;
-}
-
-.story-text {
-  font-size: 13px;
-  color: #CCCCCC;
-  font-style: italic;
-  margin-bottom: 24px;
-  line-height: 1.65;
-  padding-left: 12px;
-  border-left: 3px solid #5D8733;
-}
-
-/* Goal banner */
-.goal-banner {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: #0f1a04;
-  border: 1px solid #2A4A2A;
-  border-radius: 0;
-  padding: 10px 14px;
-  margin-bottom: 20px;
-  font-size: 13px;
-  color: #9CCF40;
-}
-
-.goal-icon { font-size: 16px; }
-.goal-text strong { color: #80FF20; }
-
-/* Word display */
-.word-display {
-  display: flex;
-  align-items: center;
-  background: #5D5D5D;
-  border: 1px solid #3A3A3A;
-  border-radius: 0;
-  padding: 18px 14px;
-  margin-bottom: 16px;
-  overflow-x: auto;
-  min-height: 76px;
-}
-
-.char-box {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 26px;
-  font-weight: 600;
-  color: #FFFFFF;
-  width: 28px;
-  text-align: center;
-  flex-shrink: 0;
-  user-select: none;
-}
-
-.gap-btn {
-  width: 22px;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  flex-shrink: 0;
-  border-radius: 3px;
-  transition: background 0.1s;
-  position: relative;
-}
-.gap-btn:hover { background: #1e160a; }
-
-.gap-dot {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: #555555;
+  border-radius: 2px;
+  touch-action: manipulation;
   transition: background 0.15s;
 }
-.gap-btn:hover .gap-dot { background: #5a4a35; }
+.pass-btn:hover { background: #4a8030; }
+.pass-btn.visible { display: block; }
 
-.gap-line {
-  display: none;
-  position: absolute;
-  width: 2px;
-  height: 36px;
-  background: #5D8733;
-  border-radius: 1px;
-}
-.gap-btn.active .gap-dot { display: none; }
-.gap-btn.active .gap-line { display: block; }
-
-/* Segments */
-.segments-area { margin-bottom: 20px; min-height: 48px; }
-
-.segments-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-}
-
-.seg-chip {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 15px;
-  font-weight: 600;
-  padding: 7px 13px;
-  border-radius: 0;
-  border: 1px solid;
-  white-space: nowrap;
-}
-.seg-chip.valid   { background: #0e1f05; border-color: #3a5818; color: #80FF20; }
-.seg-chip.invalid { background: #1f0505; border-color: #5a1818; color: #c04040; }
-
-.seg-arrow { color: #888888; font-size: 13px; flex-shrink: 0; }
-
-/* Token counter */
-.token-counter {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 10px 14px;
-  background: #5D5D5D;
-  border: 1px solid #3A3A3A;
-  border-radius: 0;
-  margin-bottom: 16px;
-  font-size: 13px;
-}
-
-.counter-item { display: flex; flex-direction: column; gap: 2px; }
-.counter-value {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 22px;
-  font-weight: 600;
-  color: #FFC107;
-  line-height: 1;
-}
-.counter-value.good { color: #80FF20; }
-.counter-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #AAAAAA; }
-.counter-divider { width: 1px; height: 32px; background: #2a1f10; }
-
-.hint-text {
-  font-size: 12px;
-  color: #AAAAAA;
-  font-style: italic;
-}
-
-.controls-row {
-  display: flex;
-  justify-content: flex-end;
-  padding-top: 4px;
-}
-
-/* Vocab panel */
-.vocab-panel {
-  background: #5D5D5D;
-  border: 1px solid #3A3A3A;
-  border-radius: 0;
-  padding: 16px;
-}
-
-.vocab-panel-title { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #AAAAAA; margin-bottom: 6px; }
-.vocab-context { font-size: 12px; color: #AAAAAA; margin-bottom: 14px; line-height: 1.5; }
-.vocab-chips { display: flex; flex-wrap: wrap; gap: 5px; }
-
-.vocab-chip {
+/* ── GHOST CONTROLS (Undo / Reset) ── */
+.reset-btn {
+  padding: 8px 20px;
+  background: transparent;
+  color: #888;
+  border: 1px solid #444;
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
-  padding: 4px 9px;
-  background: #1e160a;
-  border: 1px solid #555555;
-  border-radius: 4px;
-  color: #BBBBBB;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  cursor: pointer;
+  border-radius: 2px;
+  touch-action: manipulation;
+  transition: border-color 0.15s, color 0.15s;
 }
-.vocab-chip.matched { border-color: #4a7020; color: #80FF20; background: #0e1a04; }
+.reset-btn:hover { border-color: #888; color: #ccc; }
+.reset-btn:disabled { opacity: 0.4; cursor: default; }
+.reset-btn:disabled:hover { border-color: #444; color: #888; }
+.ghost-row { display: flex; gap: 10px; justify-content: center; }
 
-.vocab-note { font-size: 11px; color: #888888; margin-top: 12px; line-height: 1.5; font-style: italic; }
-
-/* ── RESULT SCREEN ── */
-.result-wrap { padding: 8px 0; }
-
-.result-stars {
-  text-align: center;
-  font-size: 36px;
-  letter-spacing: 6px;
-  margin: 8px 0 4px;
-}
-
-.result-word {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 26px;
-  font-weight: 600;
-  color: #FFC107;
-  text-align: center;
-  margin-bottom: 4px;
-}
-
-.result-score-row {
-  display: flex;
-  justify-content: center;
+/* ── REVEAL SCREEN ── */
+#reveal {
   gap: 24px;
-  margin-bottom: 24px;
+  padding: 32px 0;
 }
 
-.result-score-item { text-align: center; }
-
-.result-score-value {
+.reveal-word {
   font-family: 'JetBrains Mono', monospace;
   font-size: 28px;
+  color: #FFC107;
+  text-align: center;
   font-weight: 600;
-  color: #FFFFFF;
-  line-height: 1;
 }
-.result-score-value.highlight { color: #80FF20; }
-.result-score-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #AAAAAA; margin-top: 4px; }
-.result-score-sep { font-size: 28px; color: #2a1f10; align-self: center; }
 
-.result-split-label {
-  font-size: 10px;
+/* Side-by-side: your split  vs  model split */
+.reveal-splits {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+}
+.rs-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+.rs-label {
+  font-size: 9px;
   letter-spacing: 3px;
   text-transform: uppercase;
-  color: #AAAAAA;
-  text-align: center;
-  margin-bottom: 10px;
+  color: #888;
+  font-family: 'JetBrains Mono', monospace;
 }
-
-.result-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 24px; }
-
-.star-meaning {
-  background: #5D5D5D;
-  border: 1px solid #3A3A3A;
-  border-radius: 0;
-  padding: 12px 16px;
-  margin-bottom: 16px;
-  font-size: 13px;
-  color: #CCCCCC;
-  text-align: center;
-  line-height: 1.5;
+.rs-vs {
+  font-size: 15px;
+  color: #777;
+  font-family: 'JetBrains Mono', monospace;
+  align-self: center;
 }
-.star-meaning strong { color: #c9a060; }
-
-.result-card {
-  background: #5D5D5D;
-  border: 1px solid #3A3A3A;
-  border-radius: 0;
-  padding: 18px 22px;
-  margin-bottom: 14px;
-  font-size: 14px;
-  color: #DDDDDD;
-  line-height: 1.75;
-}
-
-.result-insight {
-  background: #1E3D1E;
-  border: 1px solid #2A4A2A;
-  border-radius: 0;
-  padding: 14px 18px;
-  margin-bottom: 28px;
-}
-
-.insight-label { font-family: 'Press Start 2P', monospace; font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: #80C840; margin-bottom: 8px; line-height: 2; }
-.insight-text { font-size: 13px; color: #80FF20; line-height: 1.6; }
-
-.result-actions { display: flex; gap: 12px; justify-content: center; }
-
-/* ── FINAL SCREEN ── */
-.final-wrap { padding: 40px 0; text-align: center; }
-.final-score-display { font-size: 52px; margin: 16px 0 32px; }
-
-.summary-list { margin-bottom: 32px; display: flex; flex-direction: column; gap: 6px; text-align: left; }
-
-.summary-item {
+.reveal-chips {
   display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   align-items: center;
-  background: #5D5D5D;
-  border: 1px solid #1e160a;
-  border-radius: 0;
-  padding: 11px 16px;
-  gap: 12px;
+}
+.reveal-chip {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 18px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 3px;
+}
+.reveal-chip.model {
+  background: #0a1f08;
+  border: 2px solid #3a6820;
+  color: #80d840;
+}
+.reveal-chip.player-same {
+  background: #0a1f08;
+  border: 2px dashed #3a6820;
+  color: #80d840;
+  opacity: 0.7;
+}
+.reveal-chip.player-diff {
+  background: #2a2a0a;
+  border: 2px dashed #7a6820;
+  color: #c0a840;
+  opacity: 0.7;
 }
 
-.summary-word { font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #FFFFFF; min-width: 130px; }
-.summary-split { flex: 1; font-size: 12px; color: #CCCCCC; font-family: 'JetBrains Mono', monospace; }
-.summary-stars { color: #FFC107; font-size: 13px; letter-spacing: 2px; }
-
-/* Minecraft hotbar */
-.mc-hotbar {
-  display: flex; gap: 4px; justify-content: center;
-  padding: 20px 0 4px;
+/* ── EXPLAIN ROWS — "What happened here" (specific to this word) then "So what?" (the lesson). ── */
+.reveal-explain {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
-.mc-hotbar-slot {
-  width: 50px; height: 50px;
-  background: #8B8B8B;
-  border-top: 3px solid #C6C6C6; border-left: 3px solid #C6C6C6;
-  border-bottom: 3px solid #373737; border-right: 3px solid #373737;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  text-decoration: none; cursor: pointer; position: relative;
-  transition: none;
+.rx-row {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;   /* align the tag label and body text on the same baseline, despite different font sizes */
+  gap: 16px;
 }
-.mc-hotbar-slot.current {
-  background: #9A9A9A;
-  border-top-color: #FFFFFF; border-left-color: #FFFFFF;
-  border-bottom-color: #FFFFFF; border-right-color: #FFFFFF;
-  box-shadow: 0 0 0 2px #FFC107;
+.rx-tag {
+  flex-shrink: 0;
+  width: 132px;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  line-height: 1.4;
+  color: #999;
+  font-family: 'JetBrains Mono', monospace;
+  background: #212121;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 9px 12px;
 }
-.mc-hotbar-slot.future {
-  background: #5A5A5A;
-  border-top-color: #8A8A8A; border-left-color: #8A8A8A;
-  border-bottom-color: #1A1A1A; border-right-color: #1A1A1A;
-  opacity: 0.6;
+.rx-text {
+  font-size: 15px;
+  color: #cfcfcf;
+  line-height: 1.6;
+  font-family: 'JetBrains Mono', monospace;
 }
-.mc-hotbar-num {
-  font-family: 'Press Start 2P', monospace; font-size: 8px;
-  color: #FFFFFF; text-shadow: 1px 1px #000;
-  position: absolute; top: 3px; right: 5px;
+/* "So what?" is the payoff line — gold accent (green stays reserved for the correct split). */
+.rx-sowhat .rx-tag { color: #d8b45a; border-color: #5a4510; background: #211c0f; }
+.rx-sowhat .rx-text { color: #fde68a; font-weight: 600; }
+
+.next-btn {
+  display: block;
+  padding: 14px 48px;
+  background: #3a5870;
+  color: #80c8e8;
+  border: none;
+  font-family: 'Fraunces', serif;
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 2px;
+  align-self: center;
+  touch-action: manipulation;
+  transition: background 0.15s;
 }
-.mc-hotbar-label {
-  font-family: 'Press Start 2P', monospace; font-size: 6px;
-  color: #FFFFFF; text-shadow: 1px 1px #000;
-  margin-top: 2px; text-align: center; line-height: 1.4;
-  padding: 0 2px;
+.next-btn:hover { background: #4a6880; }
+
+/* ── DONE SCREEN ── */
+#done {
+  gap: 20px;
+  padding: 40px 0;
+  align-items: center;
+  text-align: center;
 }
-.mc-hotbar-slot.current .mc-hotbar-label { color: #FFC107; }
+.done-title {
+  font-size: 42px;
+  font-weight: 300;
+  color: #FFC107;
+  line-height: 1;
+}
+.done-body {
+  font-size: 14px;
+  color: #bbb;
+  line-height: 1.85;
+  max-width: 480px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.done-body strong { color: #FFC107; }
+.replay-btn {
+  padding: 14px 48px;
+  background: #5D8733;
+  color: #0d1a04;
+  border: none;
+  font-family: 'Fraunces', serif;
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 2px;
+  touch-action: manipulation;
+  transition: background 0.15s;
+}
+.replay-btn:hover { background: #6b9e3e; }
 
-@media (max-width: 600px) {
-  /* Prevent page-level horizontal scroll; body left unconstrained so word-display can scroll internally */
-  html { overflow-x: clip; }
-  body { padding: 16px 12px; }
-
-  /* Game layout: stack Ledger below game area */
-  .game-layout { grid-template-columns: 1fr; }
-
-  /* Stats row: wrap hint text below counters */
-  .token-counter { flex-wrap: wrap; }
-  .hint-text { width: 100%; padding-top: 8px; border-top: 1px solid #3A3A3A; margin-top: 2px; font-style: normal; }
-
-  /* Word display: scale letters + gaps; overflow-x scroll exposes long words */
-  .char-box { width: 22px; font-size: 20px; }
-  .gap-btn { width: 28px; }
-  .word-display { padding: 14px 10px; overflow-x: auto; min-width: 0; }
-
-  /* Intro token demo: scroll horizontally instead of wrapping */
-  .token-demo { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; padding-bottom: 4px; }
-  .token-id-row { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; }
-
-  /* HTP cards: single column */
-  .how-grid { grid-template-columns: 1fr; }
-
-  /* Big title smaller on mobile */
-  .big-title { font-size: 44px; }
-
-  /* Hotbar: scale down to fit 8 slots within mobile viewport */
-  .mc-hotbar { gap: 3px; }
-  .mc-hotbar-slot { width: 38px; height: 38px; }
+/* ── DEBUG BAR (touch testing, gated by ?debug) ── */
+#debug-bar {
+  position: fixed;
+  bottom: 0;
+  bottom: env(safe-area-inset-bottom, 0);
+  left: 0; right: 0;
+  background: rgba(0,0,0,0.85);
+  color: #FFC107;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 4px 12px;
+  text-align: center;
+  z-index: 200;
+  pointer-events: none;
+  display: none;
 }
 
+/* ── REDUCED MOTION ── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
 }
 
+/* ── MOBILE ── */
+@media (max-width: 520px) {
+  .piece { font-size: 20px; padding: 8px 12px; }
+  .reveal-chip { font-size: 15px; padding: 6px 10px; }
+  .reveal-splits { flex-direction: column; gap: 14px; }
+  .rx-row { flex-direction: column; gap: 6px; }
+  .rx-tag { width: auto; align-self: flex-start; }
+  .rx-text { padding-top: 0; font-size: 13px; }
+}
 </style>
 </head>
 <body>
 
-<!-- ═══════════════ INTRO 1: What are tokens ═══════════════ -->
-<div id="intro1" class="screen active">
-  <div class="intro-centered" style="padding: 48px 0;">
-    <div class="eyebrow">The Transformer · Level 1 of 8</div>
-    <h1 class="big-title">The Gate</h1>
-    <div class="divider"></div>
+<!-- SVG slash overlay -->
+<svg id="slash-svg" aria-hidden="true"></svg>
+<div id="slash-hint" aria-hidden="true">
+  <div class="sh-line"></div>
+  <svg class="sh-blade" width="22" height="42" viewBox="0 0 22 42" fill="none">
+    <defs>
+      <linearGradient id="bladeG" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#f2f5f8"/>
+        <stop offset="0.5" stop-color="#cfd7e0"/>
+        <stop offset="1" stop-color="#9aa6b2"/>
+      </linearGradient>
+    </defs>
+    <circle cx="11" cy="3" r="3" fill="#d8b45a"/>
+    <rect x="9" y="5" width="4" height="7" rx="1.5" fill="#6e4a22"/>
+    <rect x="2.5" y="11" width="17" height="3.6" rx="1.8" fill="#d8b45a"/>
+    <polygon points="6,14.6 16,14.6 11,41" fill="url(#bladeG)"/>
+    <line x1="11" y1="15.5" x2="11" y2="38.5" stroke="#ffffff" stroke-width="0.9" opacity="0.65"/>
+  </svg>
+</div>
 
-    <div class="intro-body">
-      <p>Words don't make it through The Gate whole. The Gatekeeper breaks them into registered fragments — <strong style="color:#FFC107">tokens</strong>. Every piece must be in the Ledger, or it gets split until it fits.</p>
-    </div>
+<!-- Debug bar (visible with ?debug) -->
+<div id="debug-bar"></div>
 
-    <div style="margin: 28px 0;">
-      <div class="section-label" style="text-align:center; margin-bottom:12px;">"The cat sat on the mat" enters as:</div>
-      <div class="token-demo">
-        <div class="token-pill">The</div>
-        <div class="token-pill"> cat</div>
-        <div class="token-pill"> sat</div>
-        <div class="token-pill"> on</div>
-        <div class="token-pill"> the</div>
-        <div class="token-pill"> mat</div>
-      </div>
-      <div class="token-id-row">
-        <div class="token-id">#464</div>
-        <div class="token-id">#11506</div>
-        <div class="token-id">#8175</div>
-        <div class="token-id">#319</div>
-        <div class="token-id">#278</div>
-        <div class="token-id">#282</div>
-      </div>
-      <div style="font-size:13px; color:#888888; margin-top:10px;">↑ Each token is just a number. The model never sees letters.</div>
-    </div>
-
-    <div class="callout">
-      <p>Before a model processes a single word, it consults its <strong>Ledger</strong> — a fixed vocabulary of fragments built during training. The model read billions of sentences and counted which pieces of text appeared together most often. The most frequent fragments earned their own entries. The Ledger doesn't contain full words — it contains the pieces that showed up enough to be worth registering. <strong>Common short words are in there whole. Longer or rarer words aren't, so they get broken down until their parts are.</strong> The cuts don't follow meaning. They follow what was frequent in the training data.</p>
-    </div>
-
-    <div class="token-demo" style="margin-top: 20px;">
-      <div class="token-pill">"unbelievable"</div>
-      <div style="color:#4a3a28; font-size:20px; align-self:center;">→</div>
-      <div class="token-pill">un</div>
-      <div class="token-pill">believ</div>
-      <div class="token-pill">able</div>
-    </div>
-    <div style="font-size:13px; color:#888888; margin-top:8px;">One word, three tokens. The cuts follow frequency, not meaning.</div>
-
-    <div class="intro-nav">
-      <button class="btn-primary" onclick="showScreen('intro2')">How to play →</button>
-    </div>
+<!-- ══════════════ INTRO SCREEN ══════════════ -->
+<div id="intro" class="screen active">
+  <div class="intro-wrap">
+    <div class="intro-eyebrow">City of Tokens</div>
+    <div class="intro-title">The Gate</div>
+    <p class="intro-line">This is a game about how AI actually reads. You learn it by playing, not by reading about it.</p>
+    <p class="intro-line">An AI can't read a word until it's broken into smaller pieces. At <strong>the Gate</strong>, you do the breaking — and you'll see how AI decides where each word splits.</p>
+    <button class="intro-btn" id="begin-btn">Enter the Gate →</button>
   </div>
 </div>
 
-<!-- ═══════════════ INTRO 2: How the game works ═══════════════ -->
-<div id="intro2" class="screen">
-  <div style="padding: 40px 0;">
-    <div class="eyebrow" style="text-align:center;">How to play</div>
-    <h2 class="big-title" style="text-align:center; font-size:44px;">Find the efficient split</h2>
-    <div class="divider"></div>
-
-    <div class="how-grid">
-      <div class="how-card">
-        <div class="how-number">1</div>
-        <div class="how-card-title">A word arrives</div>
-        <div class="how-card-body">Each round, a word needs to pass The Gate. Split it into Ledger-registered pieces.</div>
-      </div>
-      <div class="how-card">
-        <div class="how-number">2</div>
-        <div class="how-card-title">Click to split</div>
-        <div class="how-card-body">Click between letters to place a cut. Green = in the Ledger. Red = unknown, split further.</div>
-      </div>
-      <div class="how-card">
-        <div class="how-number">3</div>
-        <div class="how-card-title">Fewest tokens wins</div>
-        <div class="how-card-body">Fewer, longer pieces is always better. The Gate charges by the token.</div>
-      </div>
-    </div>
-
-    <div class="example-split-demo">
-      <div class="demo-label">Example — splitting "unhappy"</div>
-
-      <div style="margin-bottom:16px;">
-        <div style="font-size:12px; color:#c04040; margin-bottom:8px;">✗ Too many tokens (5) — each piece is valid but inefficient</div>
-        <div class="demo-result">
-          <div class="demo-chip bad">u</div>
-          <div class="demo-chip bad">n</div>
-          <div class="demo-chip bad">hap</div>
-          <div class="demo-chip bad">py</div>
-          <div style="font-size:12px; color:#999999; margin-left:4px;">← all green, but not optimal</div>
-        </div>
-      </div>
-
-      <div>
-        <div style="font-size:12px; color:#8ec040; margin-bottom:8px;">✓ Optimal (2 tokens) — matches how the model actually tokenizes it</div>
-        <div class="demo-result">
-          <div class="demo-chip good">un</div>
-          <div class="demo-chip good">happy</div>
-          <div style="font-size:12px; color:#999999; margin-left:4px;">← 2 tokens, both in the Ledger</div>
-        </div>
-      </div>
-    </div>
-
-    <div style="margin-bottom:8px; font-size:13px; color:#999999; text-align:center;">How scoring works:</div>
-    <div class="scoring-legend">
-      <div class="legend-stars gold">★★★</div>
-      <div class="legend-text">Exact match — same split the model uses, fewest tokens possible</div>
-      <div class="legend-stars" style="color:#7a5a20;">★★☆</div>
-      <div class="legend-text">Right number of tokens but a different valid split</div>
-      <div class="legend-stars dim">★☆☆</div>
-      <div class="legend-text">All valid tokens, but more than the model uses — try to combine pieces</div>
-    </div>
-
-    <div class="intro-nav">
-      <button class="btn-ghost" onclick="showScreen('intro1')">← Back</button>
-      <button class="btn-primary" onclick="startGame()">Start playing →</button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══════════════ GAME ═══════════════ -->
+<!-- ══════════════ GAME SCREEN ══════════════ -->
 <div id="game" class="screen">
-  <div class="game-header">
-    <div class="game-logo">The Gate</div>
-    <div id="progress-dots" class="progress-dots"></div>
-    <div class="round-label">Word <span id="round-num">1</span> of <span id="round-total">7</span></div>
+  <div class="stage-wrap">
+    <div class="word-label" id="word-label">—</div>
+
+    <div class="gate-scene" id="arena">
+      <div class="gate-entry" id="gate-entry"></div>
+      <div class="gate-bar"></div>
+      <div class="gate-through" id="gate-through"></div>
+    </div>
   </div>
 
-  <div class="game-layout">
-    <div class="game-main">
-      <p id="story-text" class="story-text"></p>
+  <div class="ledger-panel">
+    <div class="ledger-title">The Ledger — only these pieces pass the Gate</div>
+    <div class="ledger-chips" id="ledger-chips"></div>
+  </div>
 
-      <div class="goal-banner">
-        <span class="goal-icon">◎</span>
-        <span class="goal-text">Goal: find the split with <strong>fewest tokens</strong> where every piece is in the Ledger</span>
-      </div>
-
-      <div class="section-label">Word to tokenize</div>
-      <div id="word-display" class="word-display"></div>
-
-      <div class="section-label">Your split</div>
-      <div class="segments-area">
-        <div id="segments-row" class="segments-row"></div>
-      </div>
-
-      <div class="token-counter">
-        <div class="counter-item">
-          <div id="token-count" class="counter-value">1</div>
-          <div class="counter-label">Your tokens</div>
-        </div>
-        <div class="counter-divider"></div>
-        <div class="counter-item">
-          <div id="optimal-count" class="counter-value">?</div>
-          <div class="counter-label">Optimal</div>
-        </div>
-        <div class="counter-divider"></div>
-        <div class="hint-text" id="hint-text">Split at boundaries where both pieces are in the Ledger. Fewer is better.</div>
-      </div>
-
-      <div class="controls-row">
-        <button class="btn-primary" id="submit-btn" onclick="submitSplit()" disabled>Register →</button>
-      </div>
-    </div>
-
-    <div>
-      <div class="vocab-panel">
-        <div class="vocab-panel-title">The Ledger</div>
-        <div class="vocab-context">Known tokens for this word. Every segment of your split must match one of these exactly.</div>
-        <div id="vocab-chips" class="vocab-chips"></div>
-        <div class="vocab-note">Longer tokens = more efficient. Try to use the largest pieces possible.</div>
-      </div>
+  <div class="hint" id="hint-text"></div>
+  <div class="action-row">
+    <button class="pass-btn" id="pass-btn">Pass through the Gate →</button>
+    <div class="ghost-row">
+      <button class="reset-btn" id="undo-btn">↶ Undo slash</button>
+      <button class="reset-btn" id="reset-btn">↺ Reset word</button>
     </div>
   </div>
 </div>
 
-<!-- ═══════════════ RESULT ═══════════════ -->
-<div id="result" class="screen">
-  <div class="result-wrap">
-    <div class="game-header">
-      <div class="game-logo">The Gate</div>
-      <div id="result-dots" class="progress-dots"></div>
-      <div class="round-label">Word <span id="result-round-num">1</span> of <span id="result-round-total">7</span></div>
+<!-- ══════════════ REVEAL SCREEN ══════════════ -->
+<div id="reveal" class="screen">
+  <div class="reveal-word" id="reveal-word"></div>
+
+  <div class="reveal-splits">
+    <div class="rs-col">
+      <div class="rs-label">Your split</div>
+      <div class="reveal-chips" id="reveal-player-chips"></div>
     </div>
-
-    <div id="result-stars" class="result-stars"></div>
-    <div id="result-word" class="result-word"></div>
-
-    <div class="result-score-row">
-      <div class="result-score-item">
-        <div id="your-tokens-display" class="result-score-value">—</div>
-        <div class="result-score-label">Your tokens</div>
-      </div>
-      <div class="result-score-sep">vs</div>
-      <div class="result-score-item">
-        <div id="model-tokens-display" class="result-score-value highlight">—</div>
-        <div class="result-score-label">Model's tokens</div>
-      </div>
-    </div>
-
-    <div id="star-meaning" class="star-meaning"></div>
-
-    <div class="result-split-label">How the model splits it</div>
-    <div id="result-chips" class="result-chips"></div>
-
-    <div id="result-explanation" class="result-card"></div>
-
-    <div class="result-insight">
-      <div class="insight-label">The rule</div>
-      <div id="result-insight" class="insight-text"></div>
-    </div>
-
-    <div class="result-actions">
-      <button class="btn-primary" id="next-btn" onclick="nextRound()">Next word →</button>
+    <div class="rs-vs">vs</div>
+    <div class="rs-col">
+      <div class="rs-label">Model split</div>
+      <div class="reveal-chips" id="reveal-model-chips"></div>
     </div>
   </div>
+
+  <div class="reveal-explain">
+    <div class="rx-row">
+      <div class="rx-tag">What happened here</div>
+      <div class="rx-text" id="reveal-what-text"></div>
+    </div>
+    <div class="rx-row rx-sowhat">
+      <div class="rx-tag">So what?</div>
+      <div class="rx-text" id="reveal-sowhat-text"></div>
+    </div>
+  </div>
+
+  <button class="next-btn" id="next-btn">Next word →</button>
 </div>
 
-<!-- ═══════════════ FINAL ═══════════════ -->
-<div id="final" class="screen">
-  <div class="final-wrap">
-    <div class="eyebrow">Gate cleared</div>
-    <h1 class="big-title" style="margin-bottom:4px;">Well registered.</h1>
-    <div style="font-size:14px; color:#AAAAAA; margin-bottom:12px;">Every LLM run starts with exactly this — raw text split into tokens before any processing begins.</div>
-    <div style="max-width:560px; margin: 0 auto 24px; font-size:14px; color:#CCCCCC; line-height:1.8; text-align:left;">
-      What you just did is called <strong style="color:#FFC107">tokenization</strong>, and it's performed by a component called a <strong style="color:#FFC107">tokenizer</strong>. The tokenizer takes raw text, breaks it into fragments found in the Ledger, and converts each fragment into a number — its ID. The transformer doesn't recognize text the way you do, associating words with meaning directly. It receives a sequence of IDs. As you progress through the levels, you'll see what the model does with those IDs — and why that turns out to be enough.<br><br>
-      The Ledger (called a <strong style="color:#FFC107">vocabulary</strong>) is frozen at training time: the same vocabulary is used for every run, every sentence, every prompt. Different models use different tokenizers — GPT-4 uses one called cl100k, Claude uses its own. The splits can differ, but the principle is the same: frequency-based fragments, built once, used everywhere.
-    </div>
-    <div id="final-score-display" class="final-score-display"></div>
-    <div id="summary-list" class="summary-list"></div>
-    <div style="display:flex; gap:12px; justify-content:center;">
-      <button class="btn-primary" onclick="startGame()">Play again</button>
-      <button class="btn-ghost" onclick="showScreen('intro1')">Review the concept</button>
-    </div>
+<!-- ══════════════ DONE SCREEN ══════════════ -->
+<div id="done" class="screen">
+  <div class="done-title">Gate cleared.</div>
+  <div class="done-body">
+    What you just did is called <strong>tokenization</strong>.<br><br>
+    Every word an AI reads gets broken into registered pieces this way — chosen by how often they appear, not what they mean.
   </div>
+  <button class="replay-btn" id="replay-btn">Play again</button>
 </div>
 
 <script>
+'use strict';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TUNING — all gameplay feel values live here (coding standards: no inline magic).
+// See spec §7. CSS owns the pop-in/transition durations (kept in sync there).
+// ─────────────────────────────────────────────────────────────────────────────
+const TUNING = {
+  MIN_SWIPE: 16,         // px — strokes shorter than this are ignored (no accidental cut)
+  HIT_PAD_Y: 14,         // px — vertical forgiveness for which piece a slash crossed
+  HIT_PAD_X: 6,          // px — horizontal forgiveness at a piece's edges
+  TRAIL_FADE_MS: 200,    // slash trail fade-out duration
+  TRAIL_REMOVE_MS: 260,  // remove the trail node after it has faded
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DATA — verified against the o200k (GPT-4o) tokenizer (tiktoken, 2026-06-16).
+//   word    : the string arriving at the Gate
+//   correct : the model's real split (decoded o200k tokens) — shown at the reveal
+//   vocab   : the Ledger — substrings that are genuinely single o200k tokens
+//   insight : the "why here?" copy (frequency, not meaning). Owned by Thread 1; tight here.
+// ─────────────────────────────────────────────────────────────────────────────
 const ROUNDS = [
   {
-    word: "hello",
-    correct: ["hello"],
-    story: "A simple, frequent word arrives. The gatekeeper barely glances up.",
-    vocab: ["hello", "hell", "hel", "he", "ell", "ello", "lo", "h", "e", "l", "o"],
-    explanation: "\"hello\" passed through as a single piece because it appears thousands of times in training text, always intact. The Ledger is built by counting what appears frequently — a word seen often enough earns its own slot. Splitting it smaller would create more pieces without representing anything new.",
-    insight: "You left \"hello\" whole — and that was right. The Ledger rewards frequency: pieces that appear together constantly get registered as one unit. Splitting a common word doesn't gain anything; it just creates more pieces to process. The more often something appears intact, the more likely it is to earn its own entry."
+    word: 'hello',
+    correct: ['hello'],
+    vocab: ['hello', 'ello', 'hell', 'ell', 'hel', 'llo', 'el', 'he', 'll', 'lo', 'e', 'h', 'l', 'o'],
+    whatHappened: 'hello is a very common word.',
+    takeaway: 'The most common words are kept whole, as a single piece.'
   },
   {
-    word: "unhappy",
-    correct: ["un", "happy"],
-    story: "Two pieces, both registered separately. Why does \"un-\" get its own slot?",
-    vocab: ["un", "happy", "hap", "py", "app", "appy", "u", "n", "h", "a", "p", "y"],
-    explanation: "The prefix 'un-' appears across thousands of words — unlock, undo, unreal, unusual, unbelievable. It earned its own slot through sheer frequency. 'happy' is a common word in its own right. The model splits them as two tokens, not one big one or five small ones.",
-    insight: "\"un-\" has its own place in the Ledger because it appears in hundreds of words — unlock, undo, unreal, unusual, unbelievable. The Ledger isn't only made of whole words. Common prefixes and suffixes earn entries too, because they're reusable pieces that appear across many different words."
+    word: 'unhappy',
+    correct: ['un', 'happy'],
+    vocab: ['happy', 'appy', 'app', 'hap', 'ppy', 'ap', 'ha', 'nh', 'pp', 'py', 'un', 'a', 'h', 'n', 'p', 'u', 'y'],
+    whatHappened: '"un" and "happy" are both common pieces on their own.',
+    takeaway: 'A word is split into the common pieces it is built from, not by grammar.'
   },
   {
-    word: "tokenize",
-    correct: ["token", "ize"],
-    story: "A word about tokenization — being tokenized.",
-    vocab: ["token", "ize", "tok", "en", "ken", "oken", "iz", "ze", "t", "o", "k", "e", "n", "i", "z"],
-    explanation: "The suffix '-ize' appears in realize, recognize, emphasize, memorize, and hundreds more — frequent enough for its own entry. 'token' is a common word. Together they form 2 tokens instead of 8 characters.",
-    insight: "Common suffixes (-ize, -tion, -ing, -er, -ly, -ness) almost always earn their own token slots through frequency."
+    word: 'ChatGPT',
+    correct: ['Chat', 'GPT'],
+    vocab: ['Chat', 'Cha', 'GPT', 'hat', 'Ch', 'GP', 'PT', 'at', 'ha', 'C', 'G', 'P', 'T', 'a', 'h', 't'],
+    whatHappened: '"GPT" shows up so often it became its own piece.',
+    takeaway: 'The Ledger keeps growing to include new pieces, based on words people use a lot and that show up in the data the model is trained on.'
   },
   {
-    word: "don't",
-    correct: ["don", "'t"],
-    story: "A contracted word arrives. The apostrophe marks the old boundary.",
-    vocab: ["don", "'t", "do", "n", "d", "o", "'", "t"],
-    explanation: "The apostrophe attached to the second piece — \"'t,\" not the first. That's not arbitrary: -n't endings appear constantly across don't, won't, can't, didn't, isn't. The repetition of that exact pattern earns \"'t\" its own slot, apostrophe included.",
-    insight: "You cut after \"don\" and the apostrophe stayed with \"'t\" — that's exactly how the model handles it. Contractions split at the apostrophe, and the ending keeps the apostrophe attached. That pattern holds across don't, won't, can't, didn't, isn't: the base word is one token, the ending is another."
+    word: 'unbelievable',
+    correct: ['un', 'bel', 'ievable'],
+    vocab: ['ievable', 'able', 'elie', 'abl', 'bel', 'ble', 'eli', 'eva', 'iev', 'lie', 'ab', 'be', 'bl', 'el', 'ev', 'ie', 'le', 'li', 'nb', 'un', 'va', 'a', 'b', 'e', 'i', 'l', 'n', 'u', 'v'],
+    whatHappened: 'The split cuts the word "believe" right down the middle.',
+    takeaway: 'As seen earlier, words are broken into tokens based on how commonly they occur. This happens even when the meaning of the words is lost. The model doesn\'t look for meaning in words.'
   },
   {
-    word: "ChatGPT",
-    correct: ["Chat", "G", "PT"],
-    story: "A proper noun arrives — coined after the ledger was written. The gatekeeper has no entry for it and must improvise.",
-    vocab: ["Chat", "G", "PT", "Ch", "at", "GP", "T", "C", "h", "a", "t", "P"],
-    explanation: "There's no single entry for \"ChatGPT\" — the Ledger was compiled before that name existed. So the model falls back to whatever registered pieces cover those characters: Chat + G + PT. Three tokens where you might expect one. That's why early versions of these models sometimes handled their own name oddly — they were reading it as fragments, not as a word.",
-    insight: "\"ChatGPT\" landed as three pieces because the Ledger was written before that name existed. When a word has no entry, the model falls back to whatever registered fragments cover its characters: Chat + G + PT. The vocabulary is fixed at training time — words coined afterward get approximated from whatever pieces already exist."
-  },
-  {
-    word: "unbelievable",
-    correct: ["un", "believ", "able"],
-    story: "A long word arrives. The split isn't where you'd expect — the boundary doesn't follow word meaning.",
-    vocab: ["un", "believ", "able", "bel", "iev", "be", "liev", "b", "e", "l", "i", "v", "a"],
-    explanation: "Why was 'believ' a token here? Well, to build the vocabulary, a process called Byte Pair Encoding (BPE) was used. Starting from individual letters, BPE repeatedly finds the most common pair in the training data and combines them into a single chunk. Run this thousands of times and you end up with a 'ledger' of 50,000 chunks, ranging from single letters to whole words. 'believ' made it into the ledger because that sequence of letters appeared together so frequently across the training data, in believe, believing, believer, that it kept getting picked until it became its own chunk.",
-    insight: "You probably expected the cut between \"believe\" and \"able\" — but the model cuts between \"believ\" and \"able.\" That boundary doesn't follow the word's meaning. The Ledger was built by repeatedly merging the most common character pairs, step by step, until the vocabulary was full. \"believ\" happened to emerge from that process. The algorithm never knew what the word meant — it only counted."
-  },
-  {
-    word: "preprocessing",
-    correct: ["pre", "processing"],
-    story: "A technical compound arrives. The gatekeeper recognizes both halves — old regulars from training data.",
-    vocab: ["pre", "processing", "process", "ing", "pro", "cess", "essing", "p", "r", "e", "o"],
-    explanation: "'pre-' is one of the most common prefixes in English — preload, preview, prepare, prevent, predict. It has its own slot. 'processing' appears frequently in technical text and earned whole-word registration. Two tokens for a 13-character word.",
-    insight: "Technical vocabulary tends to tokenize cleanly — technical terms appear frequently in training data and earn their registrations."
+    word: 'preprocessing',
+    correct: ['pre', 'processing'],
+    vocab: ['processing', 'rocessing', 'process', 'essing', 'proces', 'rocess', 'essin', 'cess', 'essi', 'oces', 'prep', 'proc', 'repr', 'sing', 'ces', 'ess', 'ing', 'oce', 'pre', 'pro', 'rep', 'roc', 'sin', 'ssi', 'ce', 'ep', 'es', 'in', 'ng', 'oc', 'pr', 're', 'ro', 'si', 'ss', 'c', 'e', 'g', 'i', 'n', 'o', 'p', 'r', 's'],
+    whatHappened: '"pre" and "processing" are both very common pieces.',
+    takeaway: 'Common pieces let even long words be stored in just a few tokens.'
   }
 ];
 
-let currentRound = 0;
-let splits = new Set();
-let roundStars = [];
-let userTokenCounts = [];
+// ── STATE ──
+let roundIdx = 0;
+let currentWord = '';
+let cuts = new Set();          // cut positions in WORD coordinates (1..len-1)
+let cutHistory = [];           // same cuts in the order made (for undo)
+let playerSplit = [];          // captured on pass
+const pieceEls = new Map();    // segment key "start-end" → element (keyed reconcile, no teardown)
 
-function startGame() {
-  currentRound = 0;
-  roundStars = [];
-  userTokenCounts = [];
-  splits = new Set();
-  showScreen('game');
-  loadRound(0);
+// ── SLASH STATE ──
+let slashActive = false;
+let slashPath = [];
+let slashAnimId = null;
+let slashPolyline = null;
+let activePointerId = null;
+let hasEverSlashed = false;   // once the player lands one slash, the "drag to cut" cue retires
+
+// ── DEBUG (deliberate debug utility, gated by ?debug — not console logging) ──
+const debugMode = new URLSearchParams(location.search).has('debug');
+function debugLog(msg) {
+  if (!debugMode) return;
+  const bar = document.getElementById('debug-bar');
+  bar.style.display = 'block';
+  bar.textContent = msg;
 }
 
-function loadRound(n) {
-  const round = ROUNDS[n];
-  splits = new Set();
-
-  document.getElementById('round-num').textContent = n + 1;
-  document.getElementById('round-total').textContent = ROUNDS.length;
-  document.getElementById('story-text').textContent = round.story;
-  document.getElementById('optimal-count').textContent = '?';
-  document.getElementById('token-count').textContent = '1';
-  document.getElementById('hint-text').textContent = 'Split at boundaries where both pieces are in the Ledger. Fewer is better.';
-
-  renderProgressDots('progress-dots');
-  renderWord();
-  renderVocab();
-}
-
-function renderProgressDots(containerId) {
-  let html = '';
-  for (let i = 0; i < ROUNDS.length; i++) {
-    let cls = 'dot';
-    if (i < roundStars.length) {
-      cls += roundStars[i] === 3 ? ' done-3' : ' done-1';
-    } else if (i === currentRound) {
-      cls += ' current';
-    }
-    html += `<div class="${cls}"></div>`;
-  }
-  document.getElementById(containerId).innerHTML = html;
-}
-
-function renderWord() {
-  const word = ROUNDS[currentRound].word;
-  let html = '';
-  for (let i = 0; i < word.length; i++) {
-    if (i > 0) {
-      const active = splits.has(i);
-      html += `<div class="gap-btn ${active ? 'active' : ''}" onclick="toggleSplit(${i})">
-        <div class="gap-dot"></div><div class="gap-line"></div>
-      </div>`;
-    }
-    html += `<div class="char-box">${escapeHtml(word[i])}</div>`;
-  }
-  document.getElementById('word-display').innerHTML = html;
-  renderSegments();
-}
-
-function escapeHtml(ch) {
-  const map = { "'": '&#39;', '&': '&amp;', '<': '&lt;', '>': '&gt;' };
-  return map[ch] || ch;
-}
-
-function toggleSplit(pos) {
-  if (splits.has(pos)) splits.delete(pos);
-  else splits.add(pos);
-  renderWord();
-}
-
-function getSegments() {
-  const word = ROUNDS[currentRound].word;
-  const sorted = [...splits].sort((a, b) => a - b);
-  const segs = [];
-  let start = 0;
-  for (const pos of sorted) {
-    segs.push(word.slice(start, pos));
-    start = pos;
-  }
-  segs.push(word.slice(start));
-  return segs;
-}
-
-function renderSegments() {
-  const round = ROUNDS[currentRound];
-  const segments = getSegments();
-  const vocab = round.vocab;
-
-  let html = segments.map((seg, i) => {
-    const valid = vocab.includes(seg);
-    const arrow = i > 0 ? '<div class="seg-arrow">·</div>' : '';
-    return `${arrow}<div class="seg-chip ${valid ? 'valid' : 'invalid'}">${escapeHtml(seg)}</div>`;
-  }).join('');
-
-  document.getElementById('segments-row').innerHTML = html;
-
-  const count = segments.length;
-  document.getElementById('token-count').textContent = count;
-
-  const allValid = segments.every(seg => vocab.includes(seg));
-  const submitBtn = document.getElementById('submit-btn');
-  submitBtn.disabled = !allValid;
-
-  // Update hint
-  if (!allValid) {
-    document.getElementById('hint-text').textContent = 'Red segments are not in the Ledger — split them further or try different boundaries.';
-  } else {
-    const optimal = ROUNDS[currentRound].correct.length;
-    if (count > optimal) {
-      document.getElementById('hint-text').textContent = `All valid! But can you do it in fewer tokens? Try combining adjacent pieces.`;
-    } else {
-      document.getElementById('hint-text').textContent = `All valid! Hit Register when you're happy with your split.`;
-    }
-  }
-
-  // Highlight matched vocab chips
-  document.querySelectorAll('#vocab-chips .vocab-chip').forEach(chip => {
-    chip.classList.toggle('matched', segments.includes(chip.textContent));
-  });
-}
-
-function renderVocab() {
-  const vocab = ROUNDS[currentRound].vocab;
-  const unique = [...new Set(vocab)].sort((a, b) => b.length - a.length || a.localeCompare(b));
-  document.getElementById('vocab-chips').innerHTML = unique.map(v =>
-    `<div class="vocab-chip">${escapeHtml(v)}</div>`
-  ).join('');
-}
-
-function submitSplit() {
-  const round = ROUNDS[currentRound];
-  const segments = getSegments();
-  const correct = round.correct;
-  const yourCount = segments.length;
-  const optimalCount = correct.length;
-
-  userTokenCounts.push(yourCount);
-
-  const isExact = yourCount === optimalCount &&
-    segments.every((s, i) => s === correct[i]);
-  const sameCount = yourCount === optimalCount;
-
-  let stars, starMeaning;
-  if (isExact) {
-    stars = 3;
-    starMeaning = `<strong>Perfect match.</strong> You found the same split the model uses — ${optimalCount} token${optimalCount > 1 ? 's' : ''}, exactly right.`;
-  } else if (sameCount) {
-    stars = 2;
-    starMeaning = `<strong>Right count, different split.</strong> You used ${yourCount} token${yourCount > 1 ? 's' : ''} — same number as the model but different boundaries. See the model's actual split below.`;
-  } else {
-    stars = 1;
-    starMeaning = `<strong>Valid but not optimal.</strong> You used ${yourCount} tokens; the model uses ${optimalCount}. All your pieces were in the Ledger, but they could be combined into larger, more efficient tokens.`;
-  }
-
-  roundStars.push(stars);
-
-  // Populate result
-  document.getElementById('result-round-num').textContent = currentRound + 1;
-  document.getElementById('result-round-total').textContent = ROUNDS.length;
-  document.getElementById('result-word').textContent = round.word;
-
-  const starMap = { 3: '★ ★ ★', 2: '★ ★ ☆', 1: '★ ☆ ☆' };
-  document.getElementById('result-stars').textContent = starMap[stars];
-
-  document.getElementById('your-tokens-display').textContent = yourCount;
-  document.getElementById('model-tokens-display').textContent = optimalCount;
-
-  document.getElementById('star-meaning').innerHTML = starMeaning;
-
-  document.getElementById('result-chips').innerHTML = correct.map(seg =>
-    `<div class="seg-chip valid">${escapeHtml(seg)}</div>`
-  ).join('');
-
-  document.getElementById('result-explanation').textContent = round.explanation;
-  document.getElementById('result-insight').textContent = round.insight;
-
-  renderProgressDots('result-dots');
-
-  const isLast = currentRound === ROUNDS.length - 1;
-  document.getElementById('next-btn').textContent = isLast ? 'See results →' : 'Next word →';
-
-  showScreen('result');
-}
-
-function nextRound() {
-  currentRound++;
-  if (currentRound >= ROUNDS.length) {
-    showFinal();
-  } else {
-    showScreen('game');
-    loadRound(currentRound);
-  }
-}
-
-function showFinal() {
-  const total = roundStars.reduce((a, b) => a + b, 0);
-  const max = ROUNDS.length * 3;
-  const pct = total / max;
-  const medal = pct === 1 ? '🏆' : pct >= 0.7 ? '⭐' : '📜';
-
-  document.getElementById('final-score-display').textContent = `${medal}  ${total} / ${max}`;
-
-  document.getElementById('summary-list').innerHTML = ROUNDS.map((r, i) => {
-    const s = roundStars[i] || 0;
-    const stars = '★'.repeat(s) + '☆'.repeat(3 - s);
-    const yours = userTokenCounts[i];
-    const opt = r.correct.length;
-    const diff = yours === opt ? 'matched' : `${yours} tokens (optimal: ${opt})`;
-    return `<div class="summary-item">
-      <div class="summary-word">${r.word}</div>
-      <div class="summary-split">${r.correct.join(' + ')} · <span style="color:${yours===opt?'#6a9030':'#8a6040'}">${diff}</span></div>
-      <div class="summary-stars">${stars}</div>
-    </div>`;
-  }).join('');
-
-  showScreen('final');
-}
-
+// ── SCREEN ──
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   window.scrollTo(0, 0);
+  hideSlashHint();   // never let the drag cue bleed onto reveal/done/intro
 }
-if (new URLSearchParams(location.search).has('play')) startGame();
+
+// ── ROUND INIT ──
+function loadRound(idx) {
+  roundIdx = idx;
+  cuts = new Set();
+  cutHistory = [];
+  playerSplit = [];
+
+  // Fresh slate between words (the only place we tear down DOM).
+  pieceEls.clear();
+  document.getElementById('gate-entry').innerHTML = '';
+  document.getElementById('gate-through').innerHTML = '';
+
+  const round = ROUNDS[idx];
+  currentWord = round.word;
+  document.getElementById('word-label').textContent = round.word;
+
+  renderLedger(round);
+  renderGate();
+}
+
+// ── SEGMENTS (single source of truth: currentWord + cuts in word coords) ──
+function getAllSegments() {
+  const round = ROUNDS[roundIdx];
+  const sortedCuts = [...cuts].filter(c => c > 0 && c < currentWord.length).sort((a, b) => a - b);
+  const segs = [];
+  let start = 0;
+  for (const c of sortedCuts) {
+    segs.push({ text: currentWord.slice(start, c), start, end: c });
+    start = c;
+  }
+  segs.push({ text: currentWord.slice(start), start, end: currentWord.length });
+  return segs.map(s => ({ ...s, valid: round.vocab.includes(s.text) }));
+}
+
+// ── GATE RENDER (keyed reconcile — reuse unchanged pieces, no teardown) ──
+function renderGate() {
+  const entry = document.getElementById('gate-entry');
+  const through = document.getElementById('gate-through');
+  const segs = getAllSegments();
+
+  let anyHeldBack = false;
+  let allValid = segs.length > 0;
+  const desiredEntry = [];
+  const desiredThrough = [];
+  const desiredKeys = new Set();
+  const freshEls = [];
+
+  segs.forEach(seg => {
+    const key = seg.start + '-' + seg.end;   // identity of this exact segment
+    desiredKeys.add(key);
+    let el = pieceEls.get(key);
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'piece piece-enter';     // new piece (from a cut) pops in
+      el.textContent = seg.text;
+      pieceEls.set(key, el);
+      freshEls.push(el);
+    }
+    el.dataset.start = String(seg.start);     // word-coord offset of this chip's first char
+    el.classList.toggle('valid', seg.valid);
+    el.classList.toggle('held-back', !seg.valid);
+    if (seg.valid) {
+      desiredThrough.push(el);
+    } else {
+      desiredEntry.push(el);
+      anyHeldBack = true;
+      allValid = false;
+    }
+  });
+
+  // Remove only the pieces that no longer exist (e.g. the one that was just cut).
+  for (const [key, el] of [...pieceEls]) {
+    if (!desiredKeys.has(key)) { el.remove(); pieceEls.delete(key); }
+  }
+
+  // Order each zone — appendChild MOVES existing nodes, it does not recreate them,
+  // so pieces that didn't change never flash.
+  desiredEntry.forEach(el => entry.appendChild(el));
+  desiredThrough.forEach(el => through.appendChild(el));
+
+  // Trigger the pop-in transition on freshly created pieces only.
+  if (freshEls.length) {
+    requestAnimationFrame(() => freshEls.forEach(el => el.classList.remove('piece-enter')));
+  }
+
+  highlightLedger(segs.filter(s => s.valid).map(s => s.text));
+
+  document.getElementById('undo-btn').disabled = cutHistory.length === 0;
+
+  const passBtn = document.getElementById('pass-btn');
+  if (allValid) {
+    passBtn.classList.add('visible');
+    setHint(cuts.size === 0
+      ? 'The whole word is already in the Ledger — nothing to cut. Send it through.'
+      : 'All pieces registered! Send them through the Gate.');
+  } else {
+    passBtn.classList.remove('visible');
+    if (anyHeldBack) {
+      setHint('Red pieces aren\'t in the Ledger. Slash a red piece to cut it smaller.');
+    }
+  }
+
+  // Show the drag cue over the first red word once it has settled (after pop-in).
+  setTimeout(maybeShowSlashHint, 280);
+}
+
+// ── LEDGER ──
+function renderLedger(round) {
+  const unique = [...new Set(round.vocab)].sort((a, b) => b.length - a.length || a.localeCompare(b));
+  document.getElementById('ledger-chips').innerHTML = unique
+    .map(v => `<div class="ledger-chip" data-vocab="${escapeHtml(v)}">${escapeHtml(v)}</div>`)
+    .join('');
+}
+
+function highlightLedger(matchedTexts) {
+  document.querySelectorAll('.ledger-chip').forEach(chip => {
+    chip.classList.toggle('lit', matchedTexts.includes(chip.dataset.vocab));
+  });
+}
+
+// ── HINT ──
+function setHint(msg) {
+  document.getElementById('hint-text').textContent = msg;
+}
+
+// ── SLASH AFFORDANCE CUE — shows the drag gesture over the first red word, until
+//    the player lands their first slash (then it never returns this session). ──
+function hideSlashHint() {
+  document.getElementById('slash-hint').classList.remove('show');
+}
+function maybeShowSlashHint() {
+  const hint = document.getElementById('slash-hint');
+  if (!document.getElementById('game').classList.contains('active')) { hint.classList.remove('show'); return; }
+  if (hasEverSlashed) { hint.classList.remove('show'); return; }
+  const piece = document.querySelector('#gate-entry .piece.held-back');
+  if (!piece) { hint.classList.remove('show'); return; }
+  const r = piece.getBoundingClientRect();
+  const padY = 30;
+  hint.style.left = r.left + 'px';
+  hint.style.top = (r.top - padY) + 'px';
+  hint.style.width = r.width + 'px';
+  hint.style.height = (r.height + padY * 2) + 'px';
+  hint.classList.add('show');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SLASH INPUT — single arena surface, slash-only (no tap-to-cut, see spec §5).
+// Geometry below is ported verbatim from the validated prototype (2026-06-15):
+// it is the playtested math that makes a slash land where it looks like it should.
+// ─────────────────────────────────────────────────────────────────────────────
+function initArena() {
+  const arena = document.getElementById('arena');
+  arena.addEventListener('pointerdown', onPointerDown);
+  arena.addEventListener('pointermove', onPointerMove);
+  arena.addEventListener('pointerup', onPointerUp);
+  arena.addEventListener('pointercancel', onPointerCancel);
+}
+
+function onPointerDown(e) {
+  if (slashActive) return; // ignore second pointer
+  e.preventDefault();
+  const arena = document.getElementById('arena');
+  arena.setPointerCapture(e.pointerId);
+  activePointerId = e.pointerId;
+
+  slashActive = true;
+  slashPath = [{ x: e.clientX, y: e.clientY }];
+
+  // Create SVG trail
+  const svg = document.getElementById('slash-svg');
+  slashPolyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+  slashPolyline.setAttribute('stroke', 'rgba(255,193,7,0.7)');
+  slashPolyline.setAttribute('stroke-width', '3');
+  slashPolyline.setAttribute('stroke-linecap', 'round');
+  slashPolyline.setAttribute('stroke-linejoin', 'round');
+  slashPolyline.setAttribute('fill', 'none');
+  slashPolyline.style.filter = 'drop-shadow(0 0 4px rgba(255,193,7,0.5))';
+  svg.appendChild(slashPolyline);
+
+  scheduleTrailDraw();
+  debugLog(`down (${Math.round(e.clientX)},${Math.round(e.clientY)})`);
+}
+
+function onPointerMove(e) {
+  if (!slashActive || e.pointerId !== activePointerId) return;
+  e.preventDefault();
+  slashPath.push({ x: e.clientX, y: e.clientY });
+}
+
+function onPointerUp(e) {
+  if (!slashActive || e.pointerId !== activePointerId) return;
+  e.preventDefault();
+
+  slashActive = false;
+  activePointerId = null;
+
+  if (slashAnimId) { cancelAnimationFrame(slashAnimId); slashAnimId = null; }
+  fadeOutTrail(slashPolyline); slashPolyline = null;
+
+  const path = slashPath;
+  slashPath = [];
+  if (path.length < 2) return;
+
+  const dx = path[path.length - 1].x - path[0].x;
+  const dy = path[path.length - 1].y - path[0].y;
+  if (Math.sqrt(dx * dx + dy * dy) < TUNING.MIN_SWIPE) return; // ignore clicks / tiny drags
+
+  resolveSlash(path);
+}
+
+function onPointerCancel() {
+  slashActive = false;
+  activePointerId = null;
+  if (slashAnimId) { cancelAnimationFrame(slashAnimId); slashAnimId = null; }
+  fadeOutTrail(slashPolyline); slashPolyline = null;
+  slashPath = [];
+}
+
+// Let the slash trail linger briefly and fade, so the gesture feels like it landed.
+function fadeOutTrail(poly) {
+  if (!poly) return;
+  poly.style.transition = `opacity ${TUNING.TRAIL_FADE_MS}ms ease-out`;
+  requestAnimationFrame(() => { poly.style.opacity = '0'; });
+  setTimeout(() => poly.remove(), TUNING.TRAIL_REMOVE_MS);
+}
+
+function scheduleTrailDraw() {
+  if (!slashActive) return;
+  slashAnimId = requestAnimationFrame(() => {
+    if (slashPolyline && slashPath.length > 1) {
+      slashPolyline.setAttribute('points', slashPath.map(p => `${p.x},${p.y}`).join(' '));
+    }
+    scheduleTrailDraw();
+  });
+}
+
+// ── SLASH → CUT ──
+// Find which held-back chip the blade traveled through, cut it at the nearest gap.
+// One slash = one cut (the first red piece the blade crosses, left to right).
+function resolveSlash(path) {
+  const chips = [...document.querySelectorAll('#gate-entry .piece.held-back')];
+  for (const chip of chips) {
+    const rect = chip.getBoundingClientRect();
+    const crossX = chipSlashX(path, rect);
+    if (crossX === null) continue;
+
+    const start = parseInt(chip.dataset.start, 10);
+    if (isNaN(start)) continue;
+    const localGap = findNearestGap(chip, crossX);  // 1..len-1 relative to THIS chip
+    if (localGap === null) continue;
+
+    const wordGap = start + localGap;               // convert to whole-word coordinate
+    if (!cuts.has(wordGap)) {
+      cuts.add(wordGap);
+      cutHistory.push(wordGap);
+    }
+    hasEverSlashed = true;   // first successful slash: retire the cue
+    hideSlashHint();
+    debugLog(`cut "${chip.textContent}" at local gap ${localGap} (word-pos ${wordGap})`);
+    renderGate();
+    return;
+  }
+  debugLog('slash missed — no red piece crossed');
+}
+
+// Where (clientX) did the blade travel across this chip? null if it didn't cross it.
+function chipSlashX(path, rect) {
+  const padY = TUNING.HIT_PAD_Y;
+  const padX = TUNING.HIT_PAD_X;
+  const xs = [];
+  for (const p of path) {
+    if (p.y >= rect.top - padY && p.y <= rect.bottom + padY &&
+        p.x >= rect.left - padX && p.x <= rect.right + padX) {
+      xs.push(Math.max(rect.left, Math.min(rect.right, p.x)));
+    }
+  }
+  // Slow/normal slash: use the middle of where the blade traveled across the chip.
+  if (xs.length > 0) return xs[Math.floor(xs.length / 2)];
+  // Fast slash (sparse samples): fall back to where the path crosses the chip's midline.
+  const midY = (rect.top + rect.bottom) / 2;
+  const cx = crossXAtMidY(path, midY);
+  if (cx >= rect.left && cx <= rect.right) return cx;
+  return null;
+}
+
+// X where the slash path crosses the chip's vertical midline; robust for shallow slashes.
+function crossXAtMidY(path, midY) {
+  for (let i = 1; i < path.length; i++) {
+    const p0 = path[i - 1], p1 = path[i];
+    if ((p0.y - midY) * (p1.y - midY) <= 0) {
+      const dy = p1.y - p0.y;
+      const t = Math.abs(dy) < 0.001 ? 0 : (midY - p0.y) / dy;
+      return p0.x + t * (p1.x - p0.x);
+    }
+  }
+  // No crossing — use the path point whose Y is closest to the midline.
+  let best = path[0], bestD = Math.abs(path[0].y - midY);
+  for (const p of path) {
+    const d = Math.abs(p.y - midY);
+    if (d < bestD) { bestD = d; best = p; }
+  }
+  return best.x;
+}
+
+// ── NEAREST-GAP HIT TEST ──
+// Gap g sits between char g-1 and char g, at the midpoint of their centers.
+// Returns the gap (1..len-1) whose midpoint is closest to clientX.
+function findNearestGap(el, clientX) {
+  const text = el.textContent;
+  const len = text.length;
+  if (len < 2) return null;
+
+  const centers = getCharCenters(el, text);
+  if (!centers || centers.length < 2) return null;
+
+  let bestGap = 1, bestDist = Infinity;
+  for (let g = 1; g <= len - 1; g++) {
+    const gapX = (centers[g - 1] + centers[g]) / 2;
+    const d = Math.abs(clientX - gapX);
+    if (d < bestDist) { bestDist = d; bestGap = g; }
+  }
+  return bestGap;
+}
+
+function getCharCenters(el, text) {
+  const textNode = el.firstChild;
+  const centers = [];
+
+  if (textNode && textNode.nodeType === Node.TEXT_NODE) {
+    const range = document.createRange();
+    for (let i = 0; i < text.length; i++) {
+      try {
+        range.setStart(textNode, i);
+        range.setEnd(textNode, i + 1);
+        const rects = range.getClientRects();
+        if (rects.length > 0) {
+          centers.push((rects[0].left + rects[0].right) / 2);
+          continue;
+        }
+      } catch (_) { /* fall through to width estimate */ }
+      const elRect = el.getBoundingClientRect();
+      const charW = elRect.width / text.length;
+      centers.push(elRect.left + charW * i + charW / 2);
+    }
+  } else {
+    const elRect = el.getBoundingClientRect();
+    const charW = elRect.width / text.length;
+    for (let i = 0; i < text.length; i++) {
+      centers.push(elRect.left + charW * i + charW / 2);
+    }
+  }
+  return centers;
+}
+
+// ── UNDO (remove only the last slash) ──
+function undoLastCut() {
+  if (cutHistory.length === 0) return;
+  const last = cutHistory.pop();
+  cuts.delete(last);
+  renderGate();
+}
+
+// ── PASS THROUGH ──
+function passThrough() {
+  playerSplit = getAllSegments().map(s => s.text);
+  showReveal();
+}
+
+// ── REVEAL ──
+function showReveal() {
+  const round = ROUNDS[roundIdx];
+  document.getElementById('reveal-word').textContent = round.word;
+
+  const modelSplit = round.correct;
+
+  const playerContainer = document.getElementById('reveal-player-chips');
+  playerContainer.innerHTML = '';
+  playerSplit.forEach(seg => {
+    const el = document.createElement('div');
+    el.classList.add('reveal-chip');
+    el.classList.add(modelSplit.includes(seg) ? 'player-same' : 'player-diff');
+    el.textContent = seg;
+    playerContainer.appendChild(el);
+  });
+
+  const modelContainer = document.getElementById('reveal-model-chips');
+  modelContainer.innerHTML = '';
+  modelSplit.forEach(seg => {
+    const el = document.createElement('div');
+    el.classList.add('reveal-chip', 'model');
+    el.textContent = seg;
+    modelContainer.appendChild(el);
+  });
+
+  document.getElementById('reveal-what-text').textContent = round.whatHappened;
+  document.getElementById('reveal-sowhat-text').textContent = round.takeaway;
+
+  const isLast = roundIdx === ROUNDS.length - 1;
+  document.getElementById('next-btn').textContent = isLast ? 'Done →' : 'Next word →';
+
+  showScreen('reveal');
+}
+
+// ── NEXT ──
+function nextRound() {
+  if (roundIdx >= ROUNDS.length - 1) {
+    showScreen('done');
+  } else {
+    showScreen('game');
+    loadRound(roundIdx + 1);
+  }
+}
+
+// ── UTIL ──
+function escapeHtml(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/'/g, '&#39;');
+}
+
+// ── WIRE BUTTONS (no inline handlers — coding standards) ──
+document.getElementById('begin-btn').addEventListener('click', () => showScreen('game'));
+document.getElementById('pass-btn').addEventListener('click', passThrough);
+document.getElementById('next-btn').addEventListener('click', nextRound);
+document.getElementById('undo-btn').addEventListener('click', undoLastCut);
+document.getElementById('reset-btn').addEventListener('click', () => loadRound(roundIdx));
+document.getElementById('replay-btn').addEventListener('click', () => {
+  showScreen('game');
+  loadRound(0);
+});
+
+// Keep the drag cue aligned to the red word if the viewport changes.
+window.addEventListener('resize', () => {
+  if (document.getElementById('slash-hint').classList.contains('show')) maybeShowSlashHint();
+});
+
+// ── BOOT ──
+initArena();
+loadRound(0);
 </script>
-  <div class="mc-hotbar">
-    <a href="javascript:void(0)" class="mc-hotbar-slot current">
-      <div class="mc-hotbar-num">1</div>
-      <div class="mc-hotbar-label">Gate</div>
-    </a>
-    <a href="the-map-room.html" class="mc-hotbar-slot future">
-      <div class="mc-hotbar-num">2</div>
-      <div class="mc-hotbar-label">Map</div>
-    </a>
-    <a href="the-census-bureau.html" class="mc-hotbar-slot future">
-      <div class="mc-hotbar-num">3</div>
-      <div class="mc-hotbar-label">Bureau</div>
-    </a>
-    <a href="the-town-square.html" class="mc-hotbar-slot future">
-      <div class="mc-hotbar-num">4</div>
-      <div class="mc-hotbar-label">Square</div>
-    </a>
-    <a href="the-thread.html" class="mc-hotbar-slot future">
-      <div class="mc-hotbar-num">5</div>
-      <div class="mc-hotbar-label">Thread</div>
-    </a>
-    <a href="the-library.html" class="mc-hotbar-slot future">
-      <div class="mc-hotbar-num">6</div>
-      <div class="mc-hotbar-label">Library</div>
-    </a>
-    <a href="the-tower.html" class="mc-hotbar-slot future">
-      <div class="mc-hotbar-num">7</div>
-      <div class="mc-hotbar-label">Tower</div>
-    </a>
-    <a href="the-oracle.html" class="mc-hotbar-slot future">
-      <div class="mc-hotbar-num">8</div>
-      <div class="mc-hotbar-label">Oracle</div>
-    </a>
-  </div>
 </body>
 </html>
