@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Template coming soon — Concept Forge</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #1a1a1a; color: #eee; font-family: 'Fraunces', serif; min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 28px 20px; text-align: center; }
+.eyebrow { font-size: 11px; letter-spacing: 5px; text-transform: uppercase; color: #888; font-family: 'JetBrains Mono', monospace; margin-bottom: 14px; }
+.title { font-size: 34px; font-weight: 300; color: #FFC107; margin-bottom: 16px; max-width: 520px; }
+.sub { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #cfcfcf; line-height: 1.7; max-width: 460px; margin-bottom: 28px; }
+.tmpl { color: #80d840; }
+.btn { display: inline-block; padding: 13px 30px; background: #3a5870; color: #80c8e8; border: none; font-family: 'Fraunces', serif; font-size: 16px; font-weight: 600; cursor: pointer; border-radius: 2px; }
+</style>
+</head>
+<body>
+  <div class="eyebrow">Template router</div>
+  <div class="title">This concept maps to a template we haven't built yet.</div>
+  <div class="sub">The router correctly selected <span class="tmpl mono" id="tmpl">—</span> from the concept's mechanics. Only <strong>split_match</strong> is playable in this build — the pipeline is the point. Continue to complete the before/after check.</div>
+  <button class="btn" id="continue">Continue to the check →</button>
+<script>
+  'use strict';
+  try {
+    const card = JSON.parse(sessionStorage.getItem('activeCard') || '{}');
+    document.getElementById('tmpl').textContent = card.templateType || 'unknown';
+  } catch (_) {}
+  // Returning to the shell resumes at the post-test (game counts as "played").
+  document.getElementById('continue').addEventListener('click', () => { window.location.href = '../index.html'; });
+</script>
+</body>
+</html>

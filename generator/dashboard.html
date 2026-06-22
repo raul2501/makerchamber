@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Live Dashboard — Concept Forge</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #1a1a1a; color: #eee; font-family: 'Fraunces', serif; min-height: 100dvh; padding: 28px 16px; display: flex; flex-direction: column; align-items: center; }
+.wrap { width: 100%; max-width: 760px; }
+.eyebrow { font-size: 11px; letter-spacing: 5px; text-transform: uppercase; color: #888; font-family: 'JetBrains Mono', monospace; margin-bottom: 10px; }
+.title { font-size: 38px; font-weight: 300; color: #FFC107; margin-bottom: 24px; }
+.grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 26px; }
+.stat { background: #202020; border: 1px solid #333; border-radius: 6px; padding: 18px; text-align: center; }
+.stat .v { font-size: 38px; color: #FFC107; font-weight: 300; line-height: 1; }
+.stat.delta .v { color: #80d840; }
+.stat .l { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: #888; margin-top: 8px; }
+.section-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #888; margin: 8px 0 12px; }
+.bar-row { display: grid; grid-template-columns: 110px 1fr 80px; gap: 12px; align-items: center; font-family: 'JetBrains Mono', monospace; font-size: 12px; margin-bottom: 10px; }
+.bar-track { background: #111; border-radius: 4px; height: 16px; overflow: hidden; border: 1px solid #2a2a2a; }
+.bar-fill { height: 100%; background: linear-gradient(90deg, #3a6820, #80d840); }
+.concept { color: #ccc; }
+.delta-val { color: #80d840; text-align: right; }
+.row { display: flex; gap: 10px; margin-top: 28px; align-items: center; }
+.btn { display: inline-block; padding: 11px 24px; background: #3a5870; color: #80c8e8; border: none; font-family: 'Fraunces', serif; font-size: 15px; font-weight: 600; cursor: pointer; border-radius: 2px; text-decoration: none; }
+.ghost { background: transparent; color: #888; border: 1px solid #444; font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 9px 16px; border-radius: 2px; cursor: pointer; }
+.empty { font-family: 'JetBrains Mono', monospace; color: #777; font-size: 13px; padding: 30px 0; }
+.live { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #80d840; }
+.live::before { content: '● '; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Concept Forge · <span class="live">live</span></div>
+  <div class="title">Learning, measured.</div>
+  <div class="grid" id="stat-grid"></div>
+  <div class="section-label">Average learning delta by concept</div>
+  <div id="by-concept"></div>
+  <div class="row">
+    <a class="btn" href="index.html">← Generate another</a>
+    <button class="ghost" id="clear-btn">Clear demo data</button>
+  </div>
+</div>
+
+<script src="store.js"></script>
+<script>
+'use strict';
+async function render() {
+  const results = await Store.getResults();
+  const s = Store.summarize(results);
+  document.getElementById('stat-grid').innerHTML = `
+    <div class="stat"><div class="v">${s.n}</div><div class="l">Participants</div></div>
+    <div class="stat"><div class="v">${pct(s.avgPre)}</div><div class="l">Avg before</div></div>
+    <div class="stat"><div class="v">${pct(s.avgPost)}</div><div class="l">Avg after</div></div>
+    <div class="stat delta"><div class="v">${s.avgDelta >= 0 ? '+' : ''}${s.avgDelta.toFixed(1)}</div><div class="l">Avg delta</div></div>`;
+
+  const bc = document.getElementById('by-concept');
+  const concepts = Object.entries(s.byConcept);
+  if (!concepts.length) { bc.innerHTML = '<div class="empty">No plays yet. Generate a game and play it to populate the dashboard.</div>'; return; }
+  // Max possible delta across results for bar scaling.
+  const maxTotal = Math.max(1, ...results.map(r => r.total || 1));
+  bc.innerHTML = concepts.map(([name, rs]) => {
+    const avg = rs.reduce((a, r) => a + r.delta, 0) / rs.length;
+    const width = Math.max(2, Math.min(100, (avg / maxTotal) * 100));
+    return `<div class="bar-row">
+      <div class="concept">${name} <span style="color:#666">(${rs.length})</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${width}%"></div></div>
+      <div class="delta-val">${avg >= 0 ? '+' : ''}${avg.toFixed(1)}</div>
+    </div>`;
+  }).join('');
+}
+function pct(scoreAvg) { return scoreAvg.toFixed(1); }
+document.getElementById('clear-btn').addEventListener('click', async () => { await Store.clearResults(); render(); });
+render();
+// Poll so the dashboard updates live as players finish (and for cross-device later).
+setInterval(render, 3000);
+</script>
+</body>
+</html>

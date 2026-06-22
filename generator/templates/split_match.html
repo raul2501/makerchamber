@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Gate — City of Tokens</title>
+<!--
+  Level 1: The Gate — Tokenization (slash-to-tokenize mechanic).
+  Source of truth: city-of-tokens/game-design-docs/the-gate-slash-mechanic-spec.md
+  Word data verified against the real o200k (GPT-4o) tokenizer via tiktoken (2026-06-16).
+  Supersedes the prior click-to-split build.
+
+  TODO(a11y) — spec §5: the slash is a drag gesture with NO non-drag path. Production
+  for public release MUST add an accessible alternative (distinct tap-gap mode or
+  keyboard gap navigation) — NOT tap-to-cut (it caused premature cuts). Deferred for
+  local playtest; required before any public Vercel push.
+-->
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* ── RESET ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #1a1a1a;
+  color: #eee;
+  font-family: 'Fraunces', serif;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 16px env(safe-area-inset-bottom);
+  overflow-x: hidden;
+}
+
+/* ── LAYOUT ── */
+.screen { display: none; width: 100%; max-width: 720px; }
+.screen.active { display: flex; flex-direction: column; }
+
+/* ── INTRO SCREEN ── */
+#intro { align-items: center; text-align: center; padding: 56px 0; }
+.intro-wrap { max-width: 480px; display: flex; flex-direction: column; align-items: center; }
+.intro-eyebrow { font-size: 11px; letter-spacing: 5px; text-transform: uppercase; color: #888; font-family: 'JetBrains Mono', monospace; margin-bottom: 14px; }
+.intro-title { font-size: 50px; font-weight: 300; color: #FFC107; line-height: 1; margin-bottom: 26px; }
+.intro-line { font-size: 15px; color: #d0d0d0; line-height: 1.7; margin-bottom: 18px; font-family: 'JetBrains Mono', monospace; }
+.intro-line strong { color: #FFC107; font-weight: 600; }
+.intro-btn { margin-top: 14px; padding: 14px 42px; background: #3a6820; color: #c8f080; border: none; font-family: 'Fraunces', serif; font-size: 17px; font-weight: 600; cursor: pointer; border-radius: 2px; touch-action: manipulation; transition: background 0.15s; }
+.intro-btn:hover { background: #4a8030; }
+
+/* ── WORD STAGE ── */
+.stage-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  margin: 32px 0 0;
+  width: 100%;
+  touch-action: none;
+  overscroll-behavior: contain;
+  user-select: none;
+}
+
+.word-label {
+  font-size: 11px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: #888;
+  margin-bottom: 10px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.objective {
+  align-self: flex-start;
+  max-width: 270px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  line-height: 1.55;
+  color: #b0b0b0;
+  background: #202020;
+  border-left: 3px solid #FFC107;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+}
+.objective strong {
+  color: #FFC107;
+  font-weight: 600;
+}
+
+.stage-hint {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #909090;
+  min-height: 18px;
+  margin-bottom: 14px;
+  text-align: center;
+}
+
+/* ── THE GATE VISUAL ── */
+.gate-scene {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  min-height: 260px;
+  position: relative;
+  /* The whole arena is the slash surface. Static touch-action:none here is what
+     stops mobile browsers from stealing a slash as a page scroll. */
+  touch-action: none;
+  user-select: none;
+  cursor: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='22' height='30' viewBox='0 0 22 30'><rect x='8' y='0' width='6' height='8' rx='2' fill='%238a5a2a'/><rect x='4' y='7' width='14' height='3' rx='1.5' fill='%239aa3ad'/><polygon points='7,10 15,10 11,29' fill='%23eef2f6' stroke='%236b7480' stroke-width='0.6'/></svg>") 11 28, crosshair;
+}
+
+/* Entry zone — held-back pieces sit here */
+.gate-entry {
+  width: 100%;
+  min-height: 80px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 12px 12px 16px;
+  position: relative;
+}
+
+/* The Gate bar itself */
+.gate-bar {
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(90deg, transparent 0%, #FFC107 20%, #FFC107 80%, transparent 100%);
+  position: relative;
+  flex-shrink: 0;
+}
+.gate-bar::before {
+  content: 'THE GATE';
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%) translateY(-50%);
+  top: 50%;
+  font-size: 9px;
+  letter-spacing: 3px;
+  font-family: 'JetBrains Mono', monospace;
+  color: #FFC107;
+  background: #1a1a1a;
+  padding: 0 8px;
+}
+
+/* Through zone — valid pieces sit here */
+.gate-through {
+  width: 100%;
+  min-height: 72px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 16px 12px 12px;
+}
+
+/* ── PIECE CHIPS ── */
+.piece {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 32px;
+  font-weight: 600;
+  padding: 14px 22px;
+  border-radius: 3px;
+  border: 2px solid;
+  white-space: nowrap;
+  user-select: none;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease;
+}
+/* Freshly created pieces (a fresh cut) pop in; unchanged pieces never get this. */
+.piece.piece-enter { opacity: 0; transform: scale(0.8); }
+
+/* Held-back: red-tinted, entry side. touch-action:none is STATIC so the
+   browser does not steal the slash as a scroll on mobile. */
+.piece.held-back {
+  background: #2a0a0a;
+  border-color: #7a2020;
+  color: #e06060;
+  cursor: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='22' height='30' viewBox='0 0 22 30'><rect x='8' y='0' width='6' height='8' rx='2' fill='%238a5a2a'/><rect x='4' y='7' width='14' height='3' rx='1.5' fill='%239aa3ad'/><polygon points='7,10 15,10 11,29' fill='%23eef2f6' stroke='%236b7480' stroke-width='0.6'/></svg>") 11 28, crosshair;
+  touch-action: none;
+}
+/* Valid: green-tinted, through side */
+.piece.valid {
+  background: #0a1f08;
+  border-color: #3a6820;
+  color: #80d840;
+}
+
+/* Slash SVG overlay */
+#slash-svg {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 100;
+}
+
+/* ── SLASH AFFORDANCE CUE — wordless "chop DOWN to cut" hint on the first red word.
+   Vertical, because the slash is a downward chop, not a sideways drag. ── */
+#slash-hint { position: fixed; pointer-events: none; z-index: 90; opacity: 0; transition: opacity 0.3s ease; }
+#slash-hint.show { opacity: 1; }
+.sh-line {
+  position: absolute; top: 0; bottom: 0; left: 50%;
+  border-left: 2px dashed rgba(255, 200, 90, 0.5);
+  transform: translateX(-50%);
+}
+.sh-blade {
+  position: absolute; left: 50%; top: 0;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 0 7px rgba(255, 170, 60, 0.9));
+  animation: sh-chop 1.8s cubic-bezier(0.45, 0, 0.5, 1) infinite;
+}
+@keyframes sh-chop {
+  0%   { top: 0%;   opacity: 0; }
+  15%  { opacity: 1; }
+  82%  { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+/* ── LEDGER PANEL ── */
+.ledger-panel {
+  width: 100%;
+  background: #242424;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 14px 16px;
+  margin-top: 24px;
+}
+.ledger-title {
+  font-size: 9px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #888;
+  margin-bottom: 10px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.ledger-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ledger-chip {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  padding: 3px 8px;
+  background: transparent;
+  border: 1px solid #333;
+  border-radius: 2px;
+  color: #9a9a9a;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.ledger-chip.lit {
+  border-color: #3f6620;
+  color: #80d840;
+  background: rgba(58, 104, 32, 0.16);
+}
+
+/* ── SECONDARY HINT ── */
+.hint {
+  text-align: center;
+  font-size: 13px;
+  color: #777;
+  margin-top: 20px;
+  font-family: 'JetBrains Mono', monospace;
+  min-height: 20px;
+}
+
+/* ── ACTION ROW ── */
+.action-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+/* ── PASS BUTTON ── */
+.pass-btn {
+  display: none;
+  padding: 14px 48px;
+  background: #3a6820;
+  color: #c8f080;
+  border: none;
+  font-family: 'Fraunces', serif;
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 2px;
+  touch-action: manipulation;
+  transition: background 0.15s;
+}
+.pass-btn:hover { background: #4a8030; }
+.pass-btn.visible { display: block; }
+
+/* ── GHOST CONTROLS (Undo / Reset) ── */
+.reset-btn {
+  padding: 8px 20px;
+  background: transparent;
+  color: #888;
+  border: 1px solid #444;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 2px;
+  touch-action: manipulation;
+  transition: border-color 0.15s, color 0.15s;
+}
+.reset-btn:hover { border-color: #888; color: #ccc; }
+.reset-btn:disabled { opacity: 0.4; cursor: default; }
+.reset-btn:disabled:hover { border-color: #444; color: #888; }
+.ghost-row { display: flex; gap: 10px; justify-content: center; }
+
+/* ── REVEAL SCREEN ── */
+#reveal {
+  gap: 24px;
+  padding: 32px 0;
+}
+
+.reveal-word {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 28px;
+  color: #FFC107;
+  text-align: center;
+  font-weight: 600;
+}
+
+/* Side-by-side: your split  vs  model split */
+.reveal-splits {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+}
+.rs-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+.rs-label {
+  font-size: 9px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #888;
+  font-family: 'JetBrains Mono', monospace;
+}
+.rs-vs {
+  font-size: 15px;
+  color: #777;
+  font-family: 'JetBrains Mono', monospace;
+  align-self: center;
+}
+.reveal-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.reveal-chip {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 18px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 3px;
+}
+.reveal-chip.model {
+  background: #0a1f08;
+  border: 2px solid #3a6820;
+  color: #80d840;
+}
+.reveal-chip.player-same {
+  background: #0a1f08;
+  border: 2px dashed #3a6820;
+  color: #80d840;
+  opacity: 0.7;
+}
+.reveal-chip.player-diff {
+  background: #2a2a0a;
+  border: 2px dashed #7a6820;
+  color: #c0a840;
+  opacity: 0.7;
+}
+
+/* ── EXPLAIN ROWS — "What happened here" (specific to this word) then "So what?" (the lesson). ── */
+.reveal-explain {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.rx-row {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;   /* align the tag label and body text on the same baseline, despite different font sizes */
+  gap: 16px;
+}
+.rx-tag {
+  flex-shrink: 0;
+  width: 132px;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  line-height: 1.4;
+  color: #999;
+  font-family: 'JetBrains Mono', monospace;
+  background: #212121;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 9px 12px;
+}
+.rx-text {
+  font-size: 15px;
+  color: #cfcfcf;
+  line-height: 1.6;
+  font-family: 'JetBrains Mono', monospace;
+}
+/* "So what?" is the payoff line — gold accent (green stays reserved for the correct split). */
+.rx-sowhat .rx-tag { color: #d8b45a; border-color: #5a4510; background: #211c0f; }
+.rx-sowhat .rx-text { color: #fde68a; font-weight: 600; }
+
+.next-btn {
+  display: block;
+  padding: 14px 48px;
+  background: #3a5870;
+  color: #80c8e8;
+  border: none;
+  font-family: 'Fraunces', serif;
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 2px;
+  align-self: center;
+  touch-action: manipulation;
+  transition: background 0.15s;
+}
+.next-btn:hover { background: #4a6880; }
+
+/* ── DONE SCREEN ── */
+#done {
+  gap: 20px;
+  padding: 40px 0;
+  align-items: center;
+  text-align: center;
+}
+.done-title {
+  font-size: 42px;
+  font-weight: 300;
+  color: #FFC107;
+  line-height: 1;
+}
+.done-body {
+  font-size: 14px;
+  color: #bbb;
+  line-height: 1.85;
+  max-width: 480px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.done-body strong { color: #FFC107; }
+.replay-btn {
+  padding: 14px 48px;
+  background: #5D8733;
+  color: #0d1a04;
+  border: none;
+  font-family: 'Fraunces', serif;
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 2px;
+  touch-action: manipulation;
+  transition: background 0.15s;
+}
+.replay-btn:hover { background: #6b9e3e; }
+
+/* ── DEBUG BAR (touch testing, gated by ?debug) ── */
+#debug-bar {
+  position: fixed;
+  bottom: 0;
+  bottom: env(safe-area-inset-bottom, 0);
+  left: 0; right: 0;
+  background: rgba(0,0,0,0.85);
+  color: #FFC107;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 4px 12px;
+  text-align: center;
+  z-index: 200;
+  pointer-events: none;
+  display: none;
+}
+
+/* ── REDUCED MOTION ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+
+/* ── MOBILE ── */
+@media (max-width: 520px) {
+  .piece { font-size: 28px; padding: 12px 18px; }
+  .reveal-chip { font-size: 15px; padding: 6px 10px; }
+  .reveal-splits { flex-direction: column; gap: 14px; }
+  .rx-row { flex-direction: column; gap: 6px; }
+  .rx-tag { width: auto; align-self: flex-start; }
+  .rx-text { padding-top: 0; font-size: 13px; }
+}
+</style>
+</head>
+<body>
+
+<!-- SVG slash overlay -->
+<svg id="slash-svg" aria-hidden="true"></svg>
+<div id="slash-hint" aria-hidden="true">
+  <div class="sh-line"></div>
+  <svg class="sh-blade" width="22" height="42" viewBox="0 0 22 42" fill="none">
+    <defs>
+      <linearGradient id="bladeG" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#f2f5f8"/>
+        <stop offset="0.5" stop-color="#cfd7e0"/>
+        <stop offset="1" stop-color="#9aa6b2"/>
+      </linearGradient>
+    </defs>
+    <circle cx="11" cy="3" r="3" fill="#d8b45a"/>
+    <rect x="9" y="5" width="4" height="7" rx="1.5" fill="#6e4a22"/>
+    <rect x="2.5" y="11" width="17" height="3.6" rx="1.8" fill="#d8b45a"/>
+    <polygon points="6,14.6 16,14.6 11,41" fill="url(#bladeG)"/>
+    <line x1="11" y1="15.5" x2="11" y2="38.5" stroke="#ffffff" stroke-width="0.9" opacity="0.65"/>
+  </svg>
+</div>
+
+<!-- Debug bar (visible with ?debug) -->
+<div id="debug-bar"></div>
+
+<!-- ══════════════ INTRO SCREEN ══════════════ -->
+<div id="intro" class="screen active">
+  <div class="intro-wrap">
+    <div class="intro-eyebrow">City of Tokens</div>
+    <div class="intro-title">The Gate</div>
+    <p class="intro-line">This level takes you through the mechanics of what happens when you write a sentence into your favourite AI chatbot.</p>
+    <p class="intro-line">How does AI understand the words you and I say? It uses something called a tokenizer to split words into pieces it already knows. In this level, we'll see how.</p>
+    <button class="intro-btn" id="begin-btn">Enter the Gate →</button>
+  </div>
+</div>
+
+<!-- ══════════════ GAME SCREEN ══════════════ -->
+<div id="game" class="screen">
+  <div class="stage-wrap">
+    <div class="objective"><strong>Objective:</strong> Slash the word and move through the Gate in as few tokens as possible.</div>
+    <div class="word-label" id="word-label">—</div>
+    <div class="stage-hint" id="stage-hint"></div>
+
+    <div class="gate-scene">
+      <div class="gate-entry" id="gate-entry"></div>
+      <div class="gate-bar"></div>
+      <div class="gate-through" id="gate-through"></div>
+    </div>
+  </div>
+
+  <div class="ledger-panel">
+    <div class="ledger-title">The Ledger — reference only: these pieces can pass the Gate</div>
+    <div class="ledger-chips" id="ledger-chips"></div>
+  </div>
+
+  <div class="hint" id="hint-text"></div>
+  <div class="action-row">
+    <button class="pass-btn" id="pass-btn">Pass through the Gate →</button>
+    <div class="ghost-row">
+      <button class="reset-btn" id="undo-btn">↶ Undo slash</button>
+      <button class="reset-btn" id="reset-btn">↺ Reset word</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ REVEAL SCREEN ══════════════ -->
+<div id="reveal" class="screen">
+  <div class="reveal-word" id="reveal-word"></div>
+
+  <div class="reveal-splits">
+    <div class="rs-col">
+      <div class="rs-label">Your split</div>
+      <div class="reveal-chips" id="reveal-player-chips"></div>
+    </div>
+    <div class="rs-vs">vs</div>
+    <div class="rs-col">
+      <div class="rs-label">Model split</div>
+      <div class="reveal-chips" id="reveal-model-chips"></div>
+    </div>
+  </div>
+
+  <div class="reveal-explain">
+    <div class="rx-row">
+      <div class="rx-tag">What happened here</div>
+      <div class="rx-text" id="reveal-what-text"></div>
+    </div>
+    <div class="rx-row rx-sowhat">
+      <div class="rx-tag">So what?</div>
+      <div class="rx-text" id="reveal-sowhat-text"></div>
+    </div>
+  </div>
+
+  <button class="next-btn" id="next-btn">Next word →</button>
+</div>
+
+<!-- ══════════════ DONE SCREEN ══════════════ -->
+<div id="done" class="screen">
+  <div class="done-title">Gate cleared.</div>
+  <div class="done-body">
+    What you just did is called <strong>tokenization</strong>.<br><br>
+    Every word an AI reads gets broken into registered pieces this way — chosen by how often they appear, not what they mean.
+  </div>
+  <button class="replay-btn" id="replay-btn">Play again</button>
+</div>
+
+<script>
+'use strict';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TUNING — all gameplay feel values live here (coding standards: no inline magic).
+// See spec §7. CSS owns the pop-in/transition durations (kept in sync there).
+// ─────────────────────────────────────────────────────────────────────────────
+const TUNING = {
+  MIN_SWIPE: 16,         // px — strokes shorter than this are ignored (no accidental cut)
+  HIT_PAD_Y: 14,         // px — vertical forgiveness for which piece a slash crossed
+  HIT_PAD_X: 6,          // px — horizontal forgiveness at a piece's edges
+  TRAIL_FADE_MS: 200,    // slash trail fade-out duration
+  TRAIL_REMOVE_MS: 260,  // remove the trail node after it has faded
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DATA — verified against the o200k (GPT-4o) tokenizer (tiktoken, 2026-06-16).
+//   word    : the string arriving at the Gate
+//   correct : the model's real split (decoded o200k tokens) — shown at the reveal
+//   vocab   : the Ledger — substrings that are genuinely single o200k tokens
+//   insight : the "why here?" copy (frequency, not meaning). Owned by Thread 1; tight here.
+// ─────────────────────────────────────────────────────────────────────────────
+// ── Concept Forge: this template is reused by the generator. When launched from
+//    the shell, the card (rounds + copy) arrives via sessionStorage. Standalone,
+//    it falls back to the built-in tokenization rounds below. ──
+const CARD = (() => { try { return JSON.parse(sessionStorage.getItem('activeCard') || 'null'); } catch (_) { return null; } })();
+const FROM_GENERATOR = !!CARD;
+const ROUNDS = (CARD && CARD.payload && Array.isArray(CARD.payload.rounds) && CARD.payload.rounds.length) ? CARD.payload.rounds : [
+  {
+    word: 'hello',
+    correct: ['hello'],
+    vocab: ['hello', 'ello', 'hell', 'ell', 'hel', 'llo', 'el', 'he', 'll', 'lo', 'e', 'h', 'l', 'o'],
+    whatHappened: 'hello is a very common word.',
+    takeaway: 'The most common words are kept whole, as a single piece.'
+  },
+  {
+    word: 'unhappy',
+    correct: ['un', 'happy'],
+    vocab: ['happy', 'appy', 'app', 'hap', 'ppy', 'ap', 'ha', 'nh', 'pp', 'py', 'un', 'a', 'h', 'n', 'p', 'u', 'y'],
+    whatHappened: '"un" and "happy" are both common pieces on their own.',
+    takeaway: 'A word is split into the common pieces it is built from, not by grammar.'
+  },
+  {
+    word: 'ChatGPT',
+    correct: ['Chat', 'GPT'],
+    vocab: ['Chat', 'Cha', 'GPT', 'hat', 'Ch', 'GP', 'PT', 'at', 'ha', 'C', 'G', 'P', 'T', 'a', 'h', 't'],
+    whatHappened: '"GPT" shows up so often it became its own piece.',
+    takeaway: 'The Ledger keeps growing to include new pieces, based on words people use a lot and that show up in the data the model is trained on.'
+  },
+  {
+    word: 'unbelievable',
+    correct: ['un', 'bel', 'ievable'],
+    vocab: ['ievable', 'able', 'elie', 'abl', 'bel', 'ble', 'eli', 'eva', 'iev', 'lie', 'ab', 'be', 'bl', 'el', 'ev', 'ie', 'le', 'li', 'nb', 'un', 'va', 'a', 'b', 'e', 'i', 'l', 'n', 'u', 'v'],
+    whatHappened: 'The split cuts the word "believe" right down the middle.',
+    takeaway: 'As seen earlier, words are broken into tokens based on how commonly they occur. This happens even when the meaning of the words is lost. The model doesn\'t look for meaning in words.'
+  },
+  {
+    word: 'preprocessing',
+    correct: ['pre', 'processing'],
+    vocab: ['processing', 'rocessing', 'process', 'essing', 'proces', 'rocess', 'essin', 'cess', 'essi', 'oces', 'prep', 'proc', 'repr', 'sing', 'ces', 'ess', 'ing', 'oce', 'pre', 'pro', 'rep', 'roc', 'sin', 'ssi', 'ce', 'ep', 'es', 'in', 'ng', 'oc', 'pr', 're', 'ro', 'si', 'ss', 'c', 'e', 'g', 'i', 'n', 'o', 'p', 'r', 's'],
+    whatHappened: '"pre" and "processing" are both very common pieces.',
+    takeaway: 'Common pieces let even long words be stored in just a few tokens.'
+  }
+];
+
+// ── STATE ──
+let roundIdx = 0;
+let currentWord = '';
+let cuts = new Set();          // cut positions in WORD coordinates (1..len-1)
+let cutHistory = [];           // same cuts in the order made (for undo)
+let playerSplit = [];          // captured on pass
+const pieceEls = new Map();    // segment key "start-end" → element (keyed reconcile, no teardown)
+
+// ── SLASH STATE ──
+let slashActive = false;
+let slashPath = [];
+let slashAnimId = null;
+let slashPolyline = null;
+let activePointerId = null;
+let hasEverSlashed = false;   // once the player lands one slash, the "drag to cut" cue retires
+
+// ── DEBUG (deliberate debug utility, gated by ?debug — not console logging) ──
+const debugMode = new URLSearchParams(location.search).has('debug');
+function debugLog(msg) {
+  if (!debugMode) return;
+  const bar = document.getElementById('debug-bar');
+  bar.style.display = 'block';
+  bar.textContent = msg;
+}
+
+// ── SCREEN ──
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+  hideSlashHint();   // never let the drag cue bleed onto reveal/done/intro
+}
+
+// ── ROUND INIT ──
+function loadRound(idx) {
+  roundIdx = idx;
+  cuts = new Set();
+  cutHistory = [];
+  playerSplit = [];
+
+  // Fresh slate between words (the only place we tear down DOM).
+  pieceEls.clear();
+  document.getElementById('gate-entry').innerHTML = '';
+  document.getElementById('gate-through').innerHTML = '';
+
+  const round = ROUNDS[idx];
+  currentWord = round.word;
+  document.getElementById('word-label').textContent = round.word;
+
+  renderLedger(round);
+  renderGate();
+}
+
+// ── SEGMENTS (single source of truth: currentWord + cuts in word coords) ──
+function getAllSegments() {
+  const round = ROUNDS[roundIdx];
+  const sortedCuts = [...cuts].filter(c => c > 0 && c < currentWord.length).sort((a, b) => a - b);
+  const segs = [];
+  let start = 0;
+  for (const c of sortedCuts) {
+    segs.push({ text: currentWord.slice(start, c), start, end: c });
+    start = c;
+  }
+  segs.push({ text: currentWord.slice(start), start, end: currentWord.length });
+  return segs.map(s => ({ ...s, valid: round.vocab.includes(s.text) }));
+}
+
+// ── GATE RENDER (keyed reconcile — reuse unchanged pieces, no teardown) ──
+function renderGate() {
+  const entry = document.getElementById('gate-entry');
+  const through = document.getElementById('gate-through');
+  const segs = getAllSegments();
+
+  let anyHeldBack = false;
+  let allValid = segs.length > 0;
+  const desiredEntry = [];
+  const desiredThrough = [];
+  const desiredKeys = new Set();
+  const freshEls = [];
+
+  segs.forEach(seg => {
+    const key = seg.start + '-' + seg.end;   // identity of this exact segment
+    desiredKeys.add(key);
+    let el = pieceEls.get(key);
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'piece piece-enter';     // new piece (from a cut) pops in
+      el.textContent = seg.text;
+      pieceEls.set(key, el);
+      freshEls.push(el);
+    }
+    el.dataset.start = String(seg.start);     // word-coord offset of this chip's first char
+    el.classList.toggle('valid', seg.valid);
+    el.classList.toggle('held-back', !seg.valid);
+    if (seg.valid) {
+      desiredThrough.push(el);
+    } else {
+      desiredEntry.push(el);
+      anyHeldBack = true;
+      allValid = false;
+    }
+  });
+
+  // Remove only the pieces that no longer exist (e.g. the one that was just cut).
+  for (const [key, el] of [...pieceEls]) {
+    if (!desiredKeys.has(key)) { el.remove(); pieceEls.delete(key); }
+  }
+
+  // Order each zone — appendChild MOVES existing nodes, it does not recreate them,
+  // so pieces that didn't change never flash.
+  desiredEntry.forEach(el => entry.appendChild(el));
+  desiredThrough.forEach(el => through.appendChild(el));
+
+  // Trigger the pop-in transition on freshly created pieces only.
+  if (freshEls.length) {
+    requestAnimationFrame(() => freshEls.forEach(el => el.classList.remove('piece-enter')));
+  }
+
+  highlightLedger(segs.filter(s => s.valid).map(s => s.text));
+
+  document.getElementById('undo-btn').disabled = cutHistory.length === 0;
+
+  const passBtn = document.getElementById('pass-btn');
+  if (allValid) {
+    passBtn.classList.add('visible');
+    setHint(cuts.size === 0
+      ? 'The whole word is already in the Ledger — nothing to cut. Send it through.'
+      : 'All pieces registered! Send them through the Gate.');
+  } else {
+    passBtn.classList.remove('visible');
+    if (anyHeldBack) {
+      setHint('Red pieces aren\'t in the Ledger. Slash a red piece to cut it smaller.');
+    }
+  }
+
+  // Show the drag cue over the first red word once it has settled (after pop-in).
+  setTimeout(maybeShowSlashHint, 280);
+}
+
+// ── LEDGER ──
+function renderLedger(round) {
+  const unique = [...new Set(round.vocab)].sort((a, b) => b.length - a.length || a.localeCompare(b));
+  document.getElementById('ledger-chips').innerHTML = unique
+    .map(v => `<div class="ledger-chip" data-vocab="${escapeHtml(v)}">${escapeHtml(v)}</div>`)
+    .join('');
+}
+
+function highlightLedger(matchedTexts) {
+  document.querySelectorAll('.ledger-chip').forEach(chip => {
+    chip.classList.toggle('lit', matchedTexts.includes(chip.dataset.vocab));
+  });
+}
+
+// ── HINT ──
+function setHint(msg) {
+  document.getElementById('stage-hint').textContent = msg;
+  document.getElementById('hint-text').textContent = '';
+}
+
+// ── SLASH AFFORDANCE CUE — shows the drag gesture over the first red word, until
+//    the player lands their first slash (then it never returns this session). ──
+function hideSlashHint() {
+  document.getElementById('slash-hint').classList.remove('show');
+}
+function maybeShowSlashHint() {
+  const hint = document.getElementById('slash-hint');
+  if (!document.getElementById('game').classList.contains('active')) { hint.classList.remove('show'); return; }
+  if (hasEverSlashed) { hint.classList.remove('show'); return; }
+  const piece = document.querySelector('#gate-entry .piece.held-back');
+  if (!piece) { hint.classList.remove('show'); return; }
+  const r = piece.getBoundingClientRect();
+  const padY = 30;
+  hint.style.left = r.left + 'px';
+  hint.style.top = (r.top - padY) + 'px';
+  hint.style.width = r.width + 'px';
+  hint.style.height = (r.height + padY * 2) + 'px';
+  hint.classList.add('show');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SLASH INPUT — single arena surface, slash-only (no tap-to-cut, see spec §5).
+// Geometry below is ported verbatim from the validated prototype (2026-06-15):
+// it is the playtested math that makes a slash land where it looks like it should.
+// ─────────────────────────────────────────────────────────────────────────────
+function initArena() {
+  const arena = document.querySelector('.stage-wrap');
+  arena.addEventListener('pointerdown', onPointerDown);
+  arena.addEventListener('pointermove', onPointerMove);
+  arena.addEventListener('pointerup', onPointerUp);
+  arena.addEventListener('pointercancel', onPointerCancel);
+}
+
+function onPointerDown(e) {
+  if (slashActive) return; // ignore second pointer
+  e.preventDefault();
+  const arena = document.querySelector('.stage-wrap');
+  arena.setPointerCapture(e.pointerId);
+  activePointerId = e.pointerId;
+
+  slashActive = true;
+  slashPath = [{ x: e.clientX, y: e.clientY }];
+
+  // Create SVG trail
+  const svg = document.getElementById('slash-svg');
+  slashPolyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+  slashPolyline.setAttribute('stroke', 'rgba(255,193,7,0.7)');
+  slashPolyline.setAttribute('stroke-width', '3');
+  slashPolyline.setAttribute('stroke-linecap', 'round');
+  slashPolyline.setAttribute('stroke-linejoin', 'round');
+  slashPolyline.setAttribute('fill', 'none');
+  slashPolyline.style.filter = 'drop-shadow(0 0 4px rgba(255,193,7,0.5))';
+  svg.appendChild(slashPolyline);
+
+  scheduleTrailDraw();
+  debugLog(`down (${Math.round(e.clientX)},${Math.round(e.clientY)})`);
+}
+
+function onPointerMove(e) {
+  if (!slashActive || e.pointerId !== activePointerId) return;
+  e.preventDefault();
+  slashPath.push({ x: e.clientX, y: e.clientY });
+}
+
+function onPointerUp(e) {
+  if (!slashActive || e.pointerId !== activePointerId) return;
+  e.preventDefault();
+
+  slashActive = false;
+  activePointerId = null;
+
+  if (slashAnimId) { cancelAnimationFrame(slashAnimId); slashAnimId = null; }
+  fadeOutTrail(slashPolyline); slashPolyline = null;
+
+  const path = slashPath;
+  slashPath = [];
+  if (path.length < 2) return;
+
+  const dx = path[path.length - 1].x - path[0].x;
+  const dy = path[path.length - 1].y - path[0].y;
+  if (Math.sqrt(dx * dx + dy * dy) < TUNING.MIN_SWIPE) return; // ignore clicks / tiny drags
+
+  resolveSlash(path);
+}
+
+function onPointerCancel() {
+  slashActive = false;
+  activePointerId = null;
+  if (slashAnimId) { cancelAnimationFrame(slashAnimId); slashAnimId = null; }
+  fadeOutTrail(slashPolyline); slashPolyline = null;
+  slashPath = [];
+}
+
+// Let the slash trail linger briefly and fade, so the gesture feels like it landed.
+function fadeOutTrail(poly) {
+  if (!poly) return;
+  poly.style.transition = `opacity ${TUNING.TRAIL_FADE_MS}ms ease-out`;
+  requestAnimationFrame(() => { poly.style.opacity = '0'; });
+  setTimeout(() => poly.remove(), TUNING.TRAIL_REMOVE_MS);
+}
+
+function scheduleTrailDraw() {
+  if (!slashActive) return;
+  slashAnimId = requestAnimationFrame(() => {
+    if (slashPolyline && slashPath.length > 1) {
+      slashPolyline.setAttribute('points', slashPath.map(p => `${p.x},${p.y}`).join(' '));
+    }
+    scheduleTrailDraw();
+  });
+}
+
+// ── SLASH → CUT ──
+// Find which held-back chip the blade traveled through, cut it at the nearest gap.
+// One slash = one cut (the first red piece the blade crosses, left to right).
+function resolveSlash(path) {
+  const chips = [...document.querySelectorAll('#gate-entry .piece.held-back')];
+  for (const chip of chips) {
+    const rect = chip.getBoundingClientRect();
+    const crossX = chipSlashX(path, rect);
+    if (crossX === null) continue;
+
+    const start = parseInt(chip.dataset.start, 10);
+    if (isNaN(start)) continue;
+    const localGap = findNearestGap(chip, crossX);  // 1..len-1 relative to THIS chip
+    if (localGap === null) continue;
+
+    const wordGap = start + localGap;               // convert to whole-word coordinate
+    if (!cuts.has(wordGap)) {
+      cuts.add(wordGap);
+      cutHistory.push(wordGap);
+    }
+    hasEverSlashed = true;   // first successful slash: retire the cue
+    hideSlashHint();
+    debugLog(`cut "${chip.textContent}" at local gap ${localGap} (word-pos ${wordGap})`);
+    renderGate();
+    return;
+  }
+  debugLog('slash missed — no red piece crossed');
+}
+
+// Where (clientX) did the blade travel across this chip? null if it didn't cross it.
+function chipSlashX(path, rect) {
+  const padY = TUNING.HIT_PAD_Y;
+  const padX = TUNING.HIT_PAD_X;
+  const xs = [];
+  for (const p of path) {
+    if (p.y >= rect.top - padY && p.y <= rect.bottom + padY &&
+        p.x >= rect.left - padX && p.x <= rect.right + padX) {
+      xs.push(Math.max(rect.left, Math.min(rect.right, p.x)));
+    }
+  }
+  // Slow/normal slash: use the middle of where the blade traveled across the chip.
+  if (xs.length > 0) return xs[Math.floor(xs.length / 2)];
+  // Fast slash (sparse samples): fall back to where the path crosses the chip's midline.
+  const midY = (rect.top + rect.bottom) / 2;
+  const cx = crossXAtMidY(path, midY);
+  if (cx >= rect.left && cx <= rect.right) return cx;
+  return null;
+}
+
+// X where the slash path crosses the chip's vertical midline; robust for shallow slashes.
+function crossXAtMidY(path, midY) {
+  for (let i = 1; i < path.length; i++) {
+    const p0 = path[i - 1], p1 = path[i];
+    if ((p0.y - midY) * (p1.y - midY) <= 0) {
+      const dy = p1.y - p0.y;
+      const t = Math.abs(dy) < 0.001 ? 0 : (midY - p0.y) / dy;
+      return p0.x + t * (p1.x - p0.x);
+    }
+  }
+  // No crossing — use the path point whose Y is closest to the midline.
+  let best = path[0], bestD = Math.abs(path[0].y - midY);
+  for (const p of path) {
+    const d = Math.abs(p.y - midY);
+    if (d < bestD) { bestD = d; best = p; }
+  }
+  return best.x;
+}
+
+// ── NEAREST-GAP HIT TEST ──
+// Gap g sits between char g-1 and char g, at the midpoint of their centers.
+// Returns the gap (1..len-1) whose midpoint is closest to clientX.
+function findNearestGap(el, clientX) {
+  const text = el.textContent;
+  const len = text.length;
+  if (len < 2) return null;
+
+  const centers = getCharCenters(el, text);
+  if (!centers || centers.length < 2) return null;
+
+  let bestGap = 1, bestDist = Infinity;
+  for (let g = 1; g <= len - 1; g++) {
+    const gapX = (centers[g - 1] + centers[g]) / 2;
+    const d = Math.abs(clientX - gapX);
+    if (d < bestDist) { bestDist = d; bestGap = g; }
+  }
+  return bestGap;
+}
+
+function getCharCenters(el, text) {
+  const textNode = el.firstChild;
+  const centers = [];
+
+  if (textNode && textNode.nodeType === Node.TEXT_NODE) {
+    const range = document.createRange();
+    for (let i = 0; i < text.length; i++) {
+      try {
+        range.setStart(textNode, i);
+        range.setEnd(textNode, i + 1);
+        const rects = range.getClientRects();
+        if (rects.length > 0) {
+          centers.push((rects[0].left + rects[0].right) / 2);
+          continue;
+        }
+      } catch (_) { /* fall through to width estimate */ }
+      const elRect = el.getBoundingClientRect();
+      const charW = elRect.width / text.length;
+      centers.push(elRect.left + charW * i + charW / 2);
+    }
+  } else {
+    const elRect = el.getBoundingClientRect();
+    const charW = elRect.width / text.length;
+    for (let i = 0; i < text.length; i++) {
+      centers.push(elRect.left + charW * i + charW / 2);
+    }
+  }
+  return centers;
+}
+
+// ── UNDO (remove only the last slash) ──
+function undoLastCut() {
+  if (cutHistory.length === 0) return;
+  const last = cutHistory.pop();
+  cuts.delete(last);
+  renderGate();
+}
+
+// ── PASS THROUGH ──
+function passThrough() {
+  playerSplit = getAllSegments().map(s => s.text);
+  showReveal();
+}
+
+// ── REVEAL ──
+function showReveal() {
+  const round = ROUNDS[roundIdx];
+  document.getElementById('reveal-word').textContent = round.word;
+
+  const modelSplit = round.correct;
+
+  const playerContainer = document.getElementById('reveal-player-chips');
+  playerContainer.innerHTML = '';
+  playerSplit.forEach(seg => {
+    const el = document.createElement('div');
+    el.classList.add('reveal-chip');
+    el.classList.add(modelSplit.includes(seg) ? 'player-same' : 'player-diff');
+    el.textContent = seg;
+    playerContainer.appendChild(el);
+  });
+
+  const modelContainer = document.getElementById('reveal-model-chips');
+  modelContainer.innerHTML = '';
+  modelSplit.forEach(seg => {
+    const el = document.createElement('div');
+    el.classList.add('reveal-chip', 'model');
+    el.textContent = seg;
+    modelContainer.appendChild(el);
+  });
+
+  document.getElementById('reveal-what-text').textContent = round.whatHappened;
+  document.getElementById('reveal-sowhat-text').textContent = round.takeaway;
+
+  const isLast = roundIdx === ROUNDS.length - 1;
+  document.getElementById('next-btn').textContent = isLast ? 'Done →' : 'Next word →';
+
+  showScreen('reveal');
+}
+
+// ── NEXT ──
+function nextRound() {
+  if (roundIdx >= ROUNDS.length - 1) {
+    showScreen('done');
+  } else {
+    showScreen('game');
+    loadRound(roundIdx + 1);
+  }
+}
+
+// ── UTIL ──
+function escapeHtml(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/'/g, '&#39;');
+}
+
+// ── WIRE BUTTONS (no inline handlers — coding standards) ──
+document.getElementById('begin-btn').addEventListener('click', () => showScreen('game'));
+document.getElementById('pass-btn').addEventListener('click', passThrough);
+document.getElementById('next-btn').addEventListener('click', nextRound);
+document.getElementById('undo-btn').addEventListener('click', undoLastCut);
+document.getElementById('reset-btn').addEventListener('click', () => loadRound(roundIdx));
+document.getElementById('replay-btn').addEventListener('click', () => {
+  if (FROM_GENERATOR) { window.location.href = '../index.html'; return; }  // hand back to the shell (→ post-test)
+  showScreen('game');
+  loadRound(0);
+});
+
+// ── Concept Forge: apply the card's copy + relabel the "done" CTA as a handoff. ──
+function applyCardCopy() {
+  if (!CARD) return;
+  const fb = CARD.feedback || {};
+  const introLines = document.querySelectorAll('#intro .intro-line');
+  (fb.introLines || []).forEach((line, i) => { if (introLines[i]) introLines[i].innerHTML = line; });
+  const obj = document.querySelector('.objective');
+  if (obj && fb.objective) obj.innerHTML = '<strong>Objective:</strong> ' + fb.objective;
+  const dt = document.querySelector('#done .done-title');
+  if (dt && fb.doneTitle) dt.textContent = fb.doneTitle;
+  const db = document.querySelector('#done .done-body');
+  if (db && fb.doneBody) db.innerHTML = fb.doneBody;
+  const rb = document.getElementById('replay-btn');
+  if (rb) rb.textContent = 'Continue to the check →';
+}
+applyCardCopy();
+
+// Keep the drag cue aligned to the red word if the viewport changes.
+window.addEventListener('resize', () => {
+  if (document.getElementById('slash-hint').classList.contains('show')) maybeShowSlashHint();
+});
+
+// ── BOOT ──
+initArena();
+loadRound(0);
+</script>
+</body>
+</html>

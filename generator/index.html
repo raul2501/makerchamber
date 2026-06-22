@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Concept Forge — Learning-Game Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #1a1a1a; color: #eee; font-family: 'Fraunces', serif; min-height: 100dvh; display: flex; flex-direction: column; align-items: center; padding: 28px 16px env(safe-area-inset-bottom); overflow-x: hidden; }
+.wrap { width: 100%; max-width: 640px; }
+.screen { display: none; }
+.screen.active { display: flex; flex-direction: column; }
+.eyebrow { font-size: 11px; letter-spacing: 5px; text-transform: uppercase; color: #888; font-family: 'JetBrains Mono', monospace; margin-bottom: 10px; }
+.title { font-size: 40px; font-weight: 300; color: #FFC107; line-height: 1.05; margin-bottom: 14px; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+.sub { font-size: 14px; color: #cfcfcf; line-height: 1.7; font-family: 'JetBrains Mono', monospace; margin-bottom: 22px; }
+.btn { display: inline-block; padding: 13px 30px; background: #3a6820; color: #c8f080; border: none; font-family: 'Fraunces', serif; font-size: 16px; font-weight: 600; cursor: pointer; border-radius: 2px; touch-action: manipulation; transition: background 0.15s; }
+.btn:hover { background: #4a8030; }
+.btn.blue { background: #3a5870; color: #80c8e8; } .btn.blue:hover { background: #4a6880; }
+.btn:disabled { opacity: 0.4; cursor: default; }
+.ghost { background: transparent; color: #888; border: 1px solid #444; font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 9px 16px; border-radius: 2px; cursor: pointer; }
+.ghost:hover { border-color: #888; color: #ccc; }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 22px; }
+
+/* input screen */
+.concept-input { width: 100%; padding: 14px 16px; background: #111; border: 1px solid #444; color: #fff; font-family: 'JetBrains Mono', monospace; font-size: 16px; border-radius: 3px; margin-bottom: 12px; }
+.suggestions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.sugg { font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 6px 12px; background: #222; border: 1px solid #3a3a3a; border-radius: 20px; color: #bbb; cursor: pointer; }
+.sugg:hover { border-color: #FFC107; color: #FFC107; }
+.note { font-size: 11px; color: #777; font-family: 'JetBrains Mono', monospace; margin-top: 6px; }
+
+/* concept card */
+.card-box { background: #202020; border: 1px solid #333; border-left: 3px solid #FFC107; border-radius: 6px; padding: 22px; }
+.card-concept { font-size: 26px; color: #FFC107; font-weight: 300; margin-bottom: 6px; }
+.card-oneline { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #d0d0d0; line-height: 1.6; margin-bottom: 18px; }
+.kv { display: grid; grid-template-columns: 120px 1fr; gap: 8px 14px; font-family: 'JetBrains Mono', monospace; font-size: 12px; margin-bottom: 6px; }
+.kv .k { color: #888; text-transform: uppercase; letter-spacing: 1px; font-size: 10px; padding-top: 3px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 3px 10px; background: #1a1a1a; border: 1px solid #444; border-radius: 3px; color: #ccc; }
+.chip.sel { border-color: #5D8733; color: #80d840; background: #0e1a04; }
+.pipeline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 18px 0 4px; font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+.pipeline .step { padding: 5px 10px; border: 1px solid #3a3a3a; border-radius: 3px; color: #999; }
+.pipeline .step.on { border-color: #FFC107; color: #FFC107; }
+.pipeline .arr { color: #555; }
+
+/* tests */
+.q { margin-bottom: 20px; }
+.q-text { font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #eee; margin-bottom: 10px; line-height: 1.5; }
+.opt { display: block; font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 11px 14px; background: #1a1a1a; border: 1px solid #3a3a3a; border-radius: 3px; color: #ccc; cursor: pointer; margin-bottom: 8px; transition: border-color 0.12s, background 0.12s; }
+.opt:hover { border-color: #666; }
+.opt.picked { border-color: #FFC107; background: #211c0f; color: #ffe08a; }
+.conf-wrap { margin: 24px 0 8px; }
+.conf-label { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #aaa; margin-bottom: 10px; }
+input[type=range] { width: 100%; accent-color: #FFC107; }
+.conf-scale { display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #777; margin-top: 4px; }
+
+/* result */
+.result-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin: 22px 0; }
+.stat { background: #202020; border: 1px solid #333; border-radius: 6px; padding: 16px; text-align: center; }
+.stat .v { font-size: 34px; color: #FFC107; font-weight: 300; line-height: 1; }
+.stat .l { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: #888; margin-top: 8px; }
+.stat.delta .v { color: #80d840; }
+@media (max-width: 520px) { .kv { grid-template-columns: 1fr; } .result-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ── INPUT ── -->
+  <div id="s-input" class="screen active">
+    <div class="eyebrow">Concept Forge</div>
+    <div class="title">Turn any concept into a game where the mechanic <em>is</em> the concept.</div>
+    <div class="sub">Type a concept. We build a concept card, pick the matching mechanic, and generate a playable game with a before/after learning check.</div>
+    <input class="concept-input mono" id="concept-field" placeholder="e.g. tokenization, syllables, compound words" autocomplete="off">
+    <div class="suggestions" id="suggestions"></div>
+    <div class="row">
+      <button class="btn" id="generate-btn">Generate game →</button>
+    </div>
+    <div class="note">Demo build · curated cards are always available so the demo never fails.</div>
+  </div>
+
+  <!-- ── CONCEPT CARD ── -->
+  <div id="s-card" class="screen">
+    <div class="eyebrow">Concept Card</div>
+    <div class="card-box" id="card-box"></div>
+    <div class="pipeline">
+      <span class="step on">concept</span><span class="arr">→</span>
+      <span class="step on">card</span><span class="arr">→</span>
+      <span class="step on" id="pl-mech">mechanic</span><span class="arr">→</span>
+      <span class="step on" id="pl-tmpl">template</span><span class="arr">→</span>
+      <span class="step">play</span>
+    </div>
+    <div class="row">
+      <button class="btn blue" id="to-pretest">Start: quick check →</button>
+      <button class="ghost" id="back-input">← new concept</button>
+    </div>
+  </div>
+
+  <!-- ── PRE-TEST ── -->
+  <div id="s-pretest" class="screen">
+    <div class="eyebrow">Before you play — quick check</div>
+    <div class="title" style="font-size:24px">What do you already know?</div>
+    <div id="pretest-qs" style="margin-top:18px"></div>
+    <div class="row"><button class="btn" id="to-game" disabled>Play the game →</button></div>
+  </div>
+
+  <!-- ── GAME (LLM-generated, sandboxed; falls back to split_match) ── -->
+  <div id="s-game" class="screen">
+    <div class="eyebrow"><span id="ai-badge"></span></div>
+    <div class="mono" id="game-status" style="color:#888;font-size:13px;margin-bottom:12px">Preparing…</div>
+    <div id="game-host" style="width:100%;min-height:560px"></div>
+  </div>
+
+  <!-- ── POST-TEST ── -->
+  <div id="s-posttest" class="screen">
+    <div class="eyebrow">After playing — same check</div>
+    <div class="title" style="font-size:24px">What do you know now?</div>
+    <div id="posttest-qs" style="margin-top:18px"></div>
+    <div class="row"><button class="btn" id="to-result" disabled>See your result →</button></div>
+  </div>
+
+  <!-- ── RESULT ── -->
+  <div id="s-result" class="screen">
+    <div class="eyebrow">Learning result</div>
+    <div class="title" style="font-size:28px" id="result-headline">—</div>
+    <div class="result-grid" id="result-grid"></div>
+    <div class="sub mono" id="result-conf"></div>
+    <div id="share-box" style="display:none;margin:16px 0;font-family:'JetBrains Mono',monospace;font-size:12px">
+      <div style="color:#888;margin-bottom:6px">Share this game</div>
+      <div style="display:flex;gap:8px;align-items:center;max-width:560px">
+        <input id="share-url" readonly style="flex:1;padding:9px 11px;background:#111;border:1px solid #444;color:#9fe6c8;border-radius:3px;font-family:inherit;font-size:11px">
+        <button class="ghost" id="share-copy">Copy</button>
+      </div>
+    </div>
+    <div class="row">
+      <a class="btn" href="dashboard.html">Open live dashboard →</a>
+      <button class="ghost" id="result-again">New concept</button>
+    </div>
+  </div>
+
+</div>
+
+<script src="store.js"></script>
+<script src="schema.js"></script>
+<script src="cards.js"></script>
+<script src="resolvers/index.js"></script>
+<script src="resolvers/tokenization.js"></script>
+<script src="shellgen.js"></script>
+<script src="sandbox.js"></script>
+<script src="gamestore.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
