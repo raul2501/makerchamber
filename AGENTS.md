@@ -28,15 +28,15 @@ Future games may grow in scope — the stack may evolve.
 
 ## Project Structure
 
-@.Codex/docs/directory-structure.md
+@.claude/docs/directory-structure.md
 
 ## Technical Preferences
 
-@.Codex/docs/technical-preferences.md
+@.claude/docs/technical-preferences.md
 
 ## Coordination Rules
 
-@.Codex/docs/coordination-rules.md
+@.claude/docs/coordination-rules.md
 
 ## Collaboration Protocol
 
@@ -52,7 +52,7 @@ Every task follows: **Question → Options → Decision → Draft → Approval**
 
 ## Coding Standards
 
-@.Codex/docs/coding-standards.md
+@.claude/docs/coding-standards.md
 
 ## Studio Vision & Design Methodology
 
@@ -68,4 +68,4 @@ these as a pass/fail review gate before shipping any copy, mechanic, or screen.
 
 ## Context Management
 
-@.Codex/docs/context-management.md
+@.claude/docs/context-management.md
