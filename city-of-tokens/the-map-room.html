@@ -118,14 +118,15 @@ body {
 /* Placed traveler (snaps from drop point to its true position) */
 .placed-token {
   position: absolute;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -120%);
   font-family: 'JetBrains Mono', monospace;
-  font-size: 16px;
+  font-size: 10px;
   font-weight: 600;
-  color: #1a1a1a;
-  background: #FFC107;
+  color: #ffe08a;
+  background: rgba(255,193,7,0.22);
+  border: 1px solid #FFC107;
   border-radius: 4px;
-  padding: 5px 10px;
+  padding: 2px 5px;
   white-space: nowrap;
   z-index: 6;
   box-shadow: 0 0 0 rgba(255,193,7,0.6);
@@ -218,8 +219,7 @@ body {
   <div class="intro-wrap">
     <div class="intro-eyebrow">City of Tokens</div>
     <div class="intro-title">The Map Room</div>
-    <p class="intro-line">Every traveler that clears the Gate gets a place on a vast map of meaning.</p>
-    <p class="intro-line">Drag each one to where you think it belongs — then see where it <strong>really</strong> lives.</p>
+    <p class="intro-line">Level 1 showed how a model breaks words into tokens. In Level 2, we'll see how it understands these tokens.</p>
     <button class="intro-btn" id="begin-btn">Enter the Map Room →</button>
   </div>
 </div>
@@ -253,7 +253,7 @@ body {
 
 <!-- ══════════════ PROBLEM SCREEN (Round 4) ══════════════ -->
 <div id="problem" class="screen">
-  <div class="problem-title">Same word. Two completely different sentences.</div>
+  <div class="problem-title">Same token. Two different meanings.</div>
   <div class="sentence-row">
     <div class="sentence-text">"The <b>bank</b> was completely flooded."</div>
     <button class="lookup-btn" id="lookup-0">look up “bank” →</button>
@@ -264,7 +264,7 @@ body {
     <button class="lookup-btn" id="lookup-1">look up “bank” →</button>
     <div class="lookup-readout" id="readout-1"></div>
   </div>
-  <div id="same-callout">Two sentences, opposite meanings — the exact same point on the map.</div>
+  <div id="same-callout">Both sentences use the same token, so the map gives them the same starting point. The surrounding words have not helped yet.</div>
   <button class="next-btn" id="problem-continue" style="display:none;">Continue →</button>
 </div>
 
@@ -273,7 +273,7 @@ body {
   <div class="done-title">Mapped.</div>
   <div class="done-body">
     What you just did is called <strong>embedding</strong> — every word becomes one fixed point on a map of meaning.<br><br>
-    But “bank” proved one point can't hold two meanings. Fixing that is what the rest of the city is for.
+    But “bank” proved the problem: one fixed point can't understand two meanings by itself. The next layers use context to pull the meaning apart.
   </div>
   <button class="replay-btn" id="replay-btn">Play again</button>
 </div>
@@ -324,7 +324,6 @@ const MAP_DOTS = [
   { word: 'invest',   x: 70, y: 83 },
   { word: 'account',  x: 84, y: 68 },
   // Fragment / prefix region (top-right) — where split-off pieces land, near no meaning
-  { word: 'un',       x: 72, y: 18 },
   { word: 're',       x: 81, y: 24 },
   { word: 'pre',      x: 74, y: 31 },
   { word: 'ing',      x: 85, y: 15 },
@@ -364,8 +363,8 @@ const ROUNDS = [
       { name: 'nature',  color: '#3fb6a8', neighbors: ['river', 'rain', 'stream', 'shore'] },
       { name: 'finance', color: '#d8a93f', neighbors: ['deposit', 'money', 'invest', 'account'] },
     ],
-    whatHappened: 'bank landed stranded between the water words and the money words — fully in neither.',
-    takeaway: 'A word that means two things still gets just one place on the map. It can\'t be in both.'
+    whatHappened: 'bank landed between the water words and the money words.',
+    takeaway: 'Before context is used, the token "bank" has one starting point. The map can\'t tell whether you mean a river bank or a money bank yet.'
   },
 ];
 
@@ -432,7 +431,7 @@ function loadRound(idx) {
   card.style.left = card.style.top = card.style.width = card.style.margin = '';
 
   document.getElementById('word-label').textContent = 'Traveler ' + (idx + 1) + ' of ' + ROUNDS.length;
-  setHint('Drag the traveler onto the map.');
+  setHint('Drag the word onto the map where you think it belongs.');
 
   // Show the wordless cue until the first successful drop this session.
   setTimeout(maybeShowDragCue, 120);
@@ -680,7 +679,7 @@ function nextRound() {
 function setupProblem() {
   const round = ROUNDS[ROUNDS.length - 1];
   const rex = round.truePosition.x.toFixed(0), rey = round.truePosition.y.toFixed(0);
-  const readoutText = 'map point (' + rex + ', ' + rey + ') · neighbors: ' + round.clusters.flatMap(c => c.neighbors).join(', ');
+  const readoutText = 'same token: bank · same starting point (' + rex + ', ' + rey + ') · mixed neighbors: ' + round.clusters.flatMap(c => c.neighbors).join(', ');
   [0, 1].forEach(i => {
     document.getElementById('lookup-' + i).addEventListener('click', () => {
       lookedUp[i] = true;

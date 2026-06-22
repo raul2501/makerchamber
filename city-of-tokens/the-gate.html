@@ -53,6 +53,10 @@ body {
   align-items: center;
   gap: 0;
   margin: 32px 0 0;
+  width: 100%;
+  touch-action: none;
+  overscroll-behavior: contain;
+  user-select: none;
 }
 
 .word-label {
@@ -60,8 +64,35 @@ body {
   letter-spacing: 4px;
   text-transform: uppercase;
   color: #888;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
   font-family: 'JetBrains Mono', monospace;
+}
+
+.objective {
+  align-self: flex-start;
+  max-width: 270px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  line-height: 1.55;
+  color: #b0b0b0;
+  background: #202020;
+  border-left: 3px solid #FFC107;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+}
+.objective strong {
+  color: #FFC107;
+  font-weight: 600;
+}
+
+.stage-hint {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #909090;
+  min-height: 18px;
+  margin-bottom: 14px;
+  text-align: center;
 }
 
 /* ── THE GATE VISUAL ── */
@@ -129,9 +160,9 @@ body {
 /* ── PIECE CHIPS ── */
 .piece {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 26px;
+  font-size: 32px;
   font-weight: 600;
-  padding: 10px 16px;
+  padding: 14px 22px;
   border-radius: 3px;
   border: 2px solid;
   white-space: nowrap;
@@ -213,20 +244,20 @@ body {
 .ledger-chip {
   font-family: 'JetBrains Mono', monospace;
   font-size: 13px;
-  padding: 4px 10px;
-  background: #1a1a1a;
-  border: 1px solid #444;
-  border-radius: 3px;
-  color: #aaa;
+  padding: 3px 8px;
+  background: transparent;
+  border: 1px solid #333;
+  border-radius: 2px;
+  color: #9a9a9a;
   transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
 .ledger-chip.lit {
-  border-color: #4a7020;
+  border-color: #3f6620;
   color: #80d840;
-  background: #0e1a04;
+  background: rgba(58, 104, 32, 0.16);
 }
 
-/* ── INSTRUCTION HINT ── */
+/* ── SECONDARY HINT ── */
 .hint {
   text-align: center;
   font-size: 13px;
@@ -466,7 +497,7 @@ body {
 
 /* ── MOBILE ── */
 @media (max-width: 520px) {
-  .piece { font-size: 20px; padding: 8px 12px; }
+  .piece { font-size: 28px; padding: 12px 18px; }
   .reveal-chip { font-size: 15px; padding: 6px 10px; }
   .reveal-splits { flex-direction: column; gap: 14px; }
   .rx-row { flex-direction: column; gap: 6px; }
@@ -505,8 +536,8 @@ body {
   <div class="intro-wrap">
     <div class="intro-eyebrow">City of Tokens</div>
     <div class="intro-title">The Gate</div>
-    <p class="intro-line">This is a game about how AI actually reads. You learn it by playing, not by reading about it.</p>
-    <p class="intro-line">An AI can't read a word until it's broken into smaller pieces. At <strong>the Gate</strong>, you do the breaking — and you'll see how AI decides where each word splits.</p>
+    <p class="intro-line">This level takes you through the mechanics of what happens when you write a sentence into your favourite AI chatbot.</p>
+    <p class="intro-line">How does AI understand the words you and I say? It uses something called a tokenizer to split words into pieces it already knows. In this level, we'll see how.</p>
     <button class="intro-btn" id="begin-btn">Enter the Gate →</button>
   </div>
 </div>
@@ -514,9 +545,11 @@ body {
 <!-- ══════════════ GAME SCREEN ══════════════ -->
 <div id="game" class="screen">
   <div class="stage-wrap">
+    <div class="objective"><strong>Objective:</strong> Slash the word and move through the Gate in as few tokens as possible.</div>
     <div class="word-label" id="word-label">—</div>
+    <div class="stage-hint" id="stage-hint"></div>
 
-    <div class="gate-scene" id="arena">
+    <div class="gate-scene">
       <div class="gate-entry" id="gate-entry"></div>
       <div class="gate-bar"></div>
       <div class="gate-through" id="gate-through"></div>
@@ -524,7 +557,7 @@ body {
   </div>
 
   <div class="ledger-panel">
-    <div class="ledger-title">The Ledger — only these pieces pass the Gate</div>
+    <div class="ledger-title">The Ledger — reference only: these pieces can pass the Gate</div>
     <div class="ledger-chips" id="ledger-chips"></div>
   </div>
 
@@ -793,7 +826,8 @@ function highlightLedger(matchedTexts) {
 
 // ── HINT ──
 function setHint(msg) {
-  document.getElementById('hint-text').textContent = msg;
+  document.getElementById('stage-hint').textContent = msg;
+  document.getElementById('hint-text').textContent = '';
 }
 
 // ── SLASH AFFORDANCE CUE — shows the drag gesture over the first red word, until
@@ -822,7 +856,7 @@ function maybeShowSlashHint() {
 // it is the playtested math that makes a slash land where it looks like it should.
 // ─────────────────────────────────────────────────────────────────────────────
 function initArena() {
-  const arena = document.getElementById('arena');
+  const arena = document.querySelector('.stage-wrap');
   arena.addEventListener('pointerdown', onPointerDown);
   arena.addEventListener('pointermove', onPointerMove);
   arena.addEventListener('pointerup', onPointerUp);
@@ -832,7 +866,7 @@ function initArena() {
 function onPointerDown(e) {
   if (slashActive) return; // ignore second pointer
   e.preventDefault();
-  const arena = document.getElementById('arena');
+  const arena = document.querySelector('.stage-wrap');
   arena.setPointerCapture(e.pointerId);
   activePointerId = e.pointerId;
 

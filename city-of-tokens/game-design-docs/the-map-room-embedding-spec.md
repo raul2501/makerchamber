@@ -131,7 +131,7 @@ Per source doc §5. Words kept as authored; see the continuity note below.
 |---|------|-------|---------|
 | 1 | **happy** | cleanly inside one tight cluster (emotions) | tutorial — single-meaning words occupy tight, clean neighborhoods; establishes the mechanic |
 | 2 | **token** | at the Language/Technology boundary (word, text, sentence ↔ code, data, model) | position reflects the *full range* of usage, not the most obvious meaning |
-| 3 | **un + happy** (the two tokens L1 split `unhappy` into) | both placed as separate travelers — "happy" sits where Round 1 left it (reference), "un" lands elsewhere; a connector shows the offset | a word the Gate split now travels as **two separate points**, each with its own place — its meaning is not recombined yet (this sets up the later levels) |
+| 3 | **un + happy** (the two tokens L1 split `unhappy` into) | "happy" sits where Round 1 left it (reference), and the player drops "un"; "un" must not appear as a pre-drawn map dot | a word the Gate split now travels as **two separate points**, each with its own place — its meaning is not recombined yet (this sets up the later levels) |
 | 4 | **bank** | stranded between Finance (deposit, money, invest, account) and Nature (river, rain, stream, shore) | **main event** — polysemous words get one position belonging fully to neither meaning |
 
 ### 4.1 Conceptual-accuracy resolution (verified 2026-06-18, o200k via tiktoken)
@@ -143,7 +143,7 @@ point contradicts Level 1. Verified:
   continuity instead of breaking it. (Both `un` and `happy` are single tokens ✓.)
 - **Map-dot fixes:** `calm`/`flood`/`savings` were multi-token; replaced with single-token
   synonyms **`love` / `rain` / `money`** (verified ✓). All embeddable dots are now honestly
-  one token each.
+  one token each. `un` is a traveler in Round 3, not a pre-rendered reference dot.
 - **Accuracy caveat for Round 3 copy:** frame the lesson as "a split word now travels as
   two separate points" — keep any *directional* ("un always points toward negative") claim
   modest. A rigorous negation-direction is a word-embedding analogy property, shaky at the
