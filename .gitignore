@@ -7,5 +7,10 @@ production/session-state/active.md
 .obsidian/
 # iCloud/Finder sync duplicates (e.g. "file 2.md")
 * 2.md
+* 2.toml
 .gstack/
 docs/feedback/
+
+# Local secrets
+.env.local
+.env.*.local
