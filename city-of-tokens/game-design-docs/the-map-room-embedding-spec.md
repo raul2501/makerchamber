@@ -9,7 +9,8 @@
 > **Must pass:** `design/design-constraints.md` (review gate) and `design/pillars.md`.
 
 This spec is the source of truth for the production build. It is written to studio
-standards (named constants, mobile budgets, no-score, accuracy sourcing). Where it
+standards (named constants, mobile budgets, region-based instinct scoring, accuracy
+sourcing). Where it
 is silent, defer to `level-02-the-map-room.md`.
 
 ---
@@ -18,7 +19,7 @@ is silent, defer to `level-02-the-map-room.md`.
 
 A token arrives from the Gate. The player **drags it onto a 2D map of meaning** and
 drops it where they think it belongs. On release it **snaps to where training
-actually placed it**, and lines draw out to its nearest neighbors. After a few clean
+actually placed it**, and a ripple expands so its nearest neighbors light up. After a few clean
 words establish that the map sorts itself by meaning, **"bank"** arrives and snaps to
 a point **stranded between two clusters** (river and finance) — belonging fully to
 neither. A short two-sentence reveal shows both meanings produce the *same* point.
@@ -69,8 +70,12 @@ it here," reinforcing that embeddings are learned, not logic'd. (Pillar 1/2.)
    regions are. (Deliberate: labels would short-circuit reading the map. Per source doc §4.)
 3. The player **drags** the token card onto the map and **drops** it where they think it
    belongs.
-4. On release, the token **snaps** to its authored true position with a pulse, then
-   **neighbor lines draw out** to its nearest word-dots.
+4. On release, the token **snaps** to its authored true position with a pulse, then a
+   **proximity ripple** (a ring) expands from the dot; each nearest word-dot **lights as
+   the ring's edge reaches it** (closest first). The ripple signifies **nearness (kinship
+   of meaning), never connection** — lines would read as "these words are wired / talk to
+   each other," which is *attention*, a later mechanism not yet in play. Only the round's
+   listed kin light; a non-kin dot the ring sweeps over stays dim.
 5. A reveal panel shows the neighbor list + a short plain-English note (jargon last).
 6. Next round. **Round 3 ("un" + "happy")** is a two-token variation: "happy" is shown
    already at its Round-1 position (reference) and the player places **"un"**; on snap, a
@@ -84,27 +89,38 @@ it here," reinforcing that embeddings are learned, not logic'd. (Pillar 1/2.)
   `touch-action: none` so a drag is never stolen as a page scroll on mobile.
   `setPointerCapture` keeps the drag alive if the pointer leaves the card.
 - A **drop anywhere on the map is valid** — there is no "wrong" drop. The snap-to-true
-  reveal is the teaching, not a pass/fail on placement.
+  reveal is the teaching; placement also earns a light region-based instinct read (§3.7),
+  but the reveal never depends on it.
 - A **wordless drag cue** (e.g. the card lifting / a ghosted target) signals the gesture
   so a stranger knows to drag without reading — mirrors L1's wordless blade cue.
 
 ### 3.4 The polysemy reveal (Round 4, "bank")
 - "bank" snaps to a point **equidistant between the Finance cluster and the Nature
   cluster** — visibly in neither.
-- **Two colored halos** expand from the point — one per cluster (e.g. amber Finance,
-  teal Nature) — and neighbor chips appear in both colors.
+- **One ripple** expands from the point and lights **both clusters' dots** as its edge
+  passes them (teal Nature, amber Finance live on the dots/chips, not the ring). A single
+  ring reaching two distant families *is* the "belongs to neither" picture.
 - Color is a **reinforcing** layer, never the sole cue: the *spatial* stranding (a point
   between two groups) is the primary signal. **No flashing** (accessibility +
   `design-constraints.md`).
+- **Bank gets the standard reveal panel too** (map visible + "what happened" / "so what"),
+  same as every other round — so the player connects the spatial stranding to the words
+  before the payoff screen. Its "so what" **plants the seed**: *"One word, one dot — even
+  though it means two different things. To tell them apart, the map needs the words around
+  it."* (gestures toward the attention levels without naming "attention"/"context").
 
 ### 3.5 The two-sentence problem screen (Round 4 payoff)
-- After the "bank" placement, a separate screen shows two sentences with opposite
-  meanings (e.g. *"The bank was completely flooded."* / *"The bank was suddenly closed."*).
-- The player taps **"look up *bank*"** on each. Both return the **same coordinates and
-  same neighbors**.
-- A callout appears **only after both** have been looked up: *"Two sentences, completely
-  different meanings — the exact same point."* (Gated so the player makes the connection
-  themselves, not told. Per source doc §6.)
+- Reached via the bank reveal panel's **"Continue →"**. Title: *"Same word. Two meanings."*
+- Two sentences with opposite meanings (*"The bank was completely flooded."* / *"The bank
+  was suddenly closed."*), each tagged with the meaning the player would **expect**
+  (by the water / near the money) — this sets the tension the payoff resolves.
+- An **echo-map** sits below: a faint water cluster (left), money cluster (right), and one
+  shared **`bank` dot** in the middle. Tapping **"look up *bank*"** on each sentence fires
+  an arrow from its side to the **same shared dot**. After both: two arrows, **one dot** —
+  the collision is *spatial*, not textual. **No coordinates, no neighbor-list** (jargon cut).
+- A callout appears **only after both** look-ups (gated so the player makes the connection
+  themselves): *"Two meanings, one dot — so the map can't tell them apart. The meaning has
+  to come from the words around it."* (≤2 sentences; plants the seed toward attention.)
 
 ### 3.6 Rendering rules
 - **Stylized, hand-placed map — not real embeddings.** Word positions are authored to
@@ -112,14 +128,26 @@ it here," reinforcing that embeddings are learned, not logic'd. (Pillar 1/2.)
   timebox.) Accurate concept, illustrative coordinates.
 - Map dots and the placed token have stable identities; only changed elements
   re-render (no full teardown / flicker) — same discipline as L1's keyed reconcile.
-- `prefers-reduced-motion`: snap/pulse/halo animations become instant state changes; the
+- `prefers-reduced-motion`: snap/pulse/ripple animations become instant state changes; the
   spatial position remains the cue.
 
-### 3.7 No scoring (deliberate)
-There is **no score, no stars, no "accuracy" readout** on how close the player's guess
-was. Carried directly from Level 1's rationale: grading the guess would teach that the
-player should *reason out* the learned space, but the space is **learned, not derivable**.
-The verdict is always the reveal, never a grade.
+### 3.7 The instinct read (scoring — region-based, never pixel-based)
+Each placement earns a light **instinct read** (e.g. *Sharp · 8/10*) shown atop the reveal
+panel, plus a running total ("Map-reading instinct: X/40" on the done screen). Scoring is
+deliberately **region-based, not coordinate-based**: it rewards finding the right
+*neighbourhood* (which meaning-cluster the drop is nearest to, then how central), **never**
+proximity to the exact authored pixel — because the positions are illustrative and the space
+is **learned, not derivable**. Guard-rails that keep it from teaching "reason out the
+coordinate":
+- **The reveal is always the verdict.** The score rides on top and never gates or replaces
+  the snap-to-true teaching; a low score still gets the full reveal.
+- **Tiers, not precision:** Spot on (10) / Sharp (8) / Warm (5) / Off (2), thresholds scaled
+  by each cluster's own size — so it reads as "right area," not "right pixel."
+- **Bank is the twist, and it's scored too.** Most players commit "bank" to the water or
+  money family (not the empty middle) — that gap *is* the lesson. Bank scores how well the
+  player sensed it's *between* two families; a low score comes with reframing copy
+  (*"you put 'bank' with the money words — like most people. But the map can't pick…"*) so
+  the likely-low score is the **setup for the aha, not a punishment**.
 
 ---
 
@@ -167,7 +195,7 @@ neighbors(word)     = authored ordered list of nearest word-dots // must be defe
 ```
 
 The "snap" animates the placed token from the player's drop point to `truePosition`.
-Neighbor lines are drawn to `neighbors(word)`.
+A proximity ripple then lights `neighbors(word)` as its edge reaches each one.
 
 ---
 
@@ -179,7 +207,9 @@ Neighbor lines are drawn to `neighbors(word)`.
 - **Rapid re-drag before snap completes** → ignore input until the snap/reveal settles
   (one placement per round).
 - **Round 4 problem screen — only one sentence looked up** → callout withheld until both.
-- **Reduced motion** → no animation; instant snap, instant halos, instant neighbors.
+- **Reduced motion** → no animation; instant snap, instant ripple, instant neighbors,
+  instant echo-map arrows. The flow sequences on timers (never `transitionend`), so it
+  never stalls when motion is off.
 - **Mobile** → map `touch-action: none`; the rest of the page scrolls normally.
 - **Accessibility (deferred — fast-follow, same call as L1):** the placement is a drag
   gesture with no non-drag path yet. Required before any public Vercel push; OK to skip
@@ -210,8 +240,8 @@ Neighbor lines are drawn to `neighbors(word)`.
 | Knob | Category | Notes |
 |---|---|---|
 | Snap animation duration | Feel | How the reveal "lands." |
-| Neighbor-line draw speed + count | Feel / clarity | How many neighbors light up, how fast. |
-| Halo expand radius + opacity (Round 4) | Feel / clarity | Tunes the "stranded between two" read. |
+| Ripple expand duration (`RING_MS`) + count | Feel / clarity | How fast the ring sweeps; how many kin light, how fast. |
+| Ripple radius/overshoot (Round 4) | Feel / clarity | Tunes the "stranded between two" read. |
 | Cluster spacing on the map | Clarity | Far enough apart to read as distinct regions. |
 | Drag-cue prominence | Onboarding | How strongly the wordless cue signals "drag me." |
 | Round set + sequence | Pacing | Clean → clean → directional → polysemy punch. |
@@ -225,9 +255,11 @@ All gameplay values live as named constants (per coding standards), not inline.
 **Functional**
 - Drag-and-drop places the token via one code path for mouse and touch; no page scroll
   on mobile mid-drag.
-- Snap-to-true + neighbor lines play on every round; Round 4 adds the two-halo polysemy
-  reveal and the gated two-sentence problem screen.
-- No score / accuracy readout anywhere.
+- Snap-to-true + the proximity ripple play on every round (kin light, never lines);
+  Round 4's single ripple lights both families, then bank gets the standard reveal panel
+  and the gated two-sentence problem screen.
+- Region-based instinct read per round + running total; never a pixel-distance grade, and
+  the reveal always plays regardless of score (§3.7).
 - Zero console errors on load and through a full play session.
 - `prefers-reduced-motion` respected; layout holds with no horizontal overflow at
   390×844 and 412×915 (the 390w bug that hit the old levels must not reappear).
@@ -236,9 +268,10 @@ All gameplay values live as named constants (per coding standards), not inline.
 - After 2–3 rounds, the player expects similar words to land near each other (clustering
   felt unprompted).
 - At "bank," the player reacts to its being **between** two groups ("it's stuck in the
-  middle"), not to placement accuracy.
+  middle"); the (often low) instinct score reads as "I fell for the trap," not "I aimed badly."
 - The two-sentence reveal produces a visible "huh — same point" moment.
-- The player does **not** ask "did I place it right?" (no grading expectation).
+- The instinct read feels like a **guess-and-discover**, not a precision test — the player
+  never feels they were supposed to compute the exact spot.
 
 **Gate**
 - Violates **none** of `design/design-constraints.md`.

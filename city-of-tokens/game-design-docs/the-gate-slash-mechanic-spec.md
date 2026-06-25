@@ -103,6 +103,12 @@ optimizes — but real tokenization is **deterministic** (one input → exactly 
 split). The "common = fewer pieces" lesson is carried by *effort* (a common word
 needs no slashing; a rare one is a mess) plus the *reveal contrast*.
 
+Note (2026-06-23): score-free is **L1's choice for L1's mechanic**, not a studio-wide ban.
+There is no blanket no-scoring policy — scoring is a per-level call. L1 stays score-free
+because tokenization is deterministic (nothing meaningful to grade an instinct against);
+L2 (embeddings) added a region-based "instinct read" because *similarity* is a real,
+gradeable intuition. Future levels decide case-by-case.
+
 ---
 
 ## 4. Formulas

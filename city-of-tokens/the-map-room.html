@@ -53,7 +53,7 @@ body {
 
 .word-label { font-size: 11px; letter-spacing: 4px; text-transform: uppercase; color: #888; margin-bottom: 14px; font-family: 'JetBrains Mono', monospace; }
 
-/* The token card — the draggable traveler */
+/* The token card — the draggable word */
 #token-card {
   font-family: 'JetBrains Mono', monospace;
   font-size: 26px;
@@ -82,7 +82,7 @@ body {
 #map {
   position: relative;
   width: 100%;
-  max-width: 460px;
+  max-width: 580px;
   aspect-ratio: 1 / 1;
   background:
     radial-gradient(circle at 30% 30%, rgba(255,255,255,0.03), transparent 60%),
@@ -115,7 +115,7 @@ body {
 .map-dot.lit .dot { background: #FFC107; box-shadow: 0 0 8px rgba(255,193,7,0.8); }
 .map-dot.lit .lbl { color: #ffe08a; }
 
-/* Placed traveler (snaps from drop point to its true position) */
+/* Placed word (snaps from drop point to its true position) */
 .placed-token {
   position: absolute;
   transform: translate(-50%, -120%);
@@ -123,7 +123,7 @@ body {
   font-size: 10px;
   font-weight: 600;
   color: #ffe08a;
-  background: rgba(255,193,7,0.22);
+  background: #463408;
   border: 1px solid #FFC107;
   border-radius: 4px;
   padding: 2px 5px;
@@ -137,10 +137,11 @@ body {
 /* Reference token (Round 3: "happy" already placed) */
 .placed-token.reference { background: #4a4030; color: #ffe08a; border: 1px solid #FFC107; }
 
-/* Polysemy halos (Round 4) */
-.halo { position: absolute; transform: translate(-50%, -50%); border-radius: 50%; z-index: 4; pointer-events: none; width: 10px; height: 10px; opacity: 0; }
-.halo.expand { animation: halo-grow var(--halo) ease-out forwards; }
-@keyframes halo-grow { 0% { width: 10px; height: 10px; opacity: 0.55; } 100% { width: 230px; height: 230px; opacity: 0; } }
+/* Proximity ripple — a ring expands from the placed dot; neighbor dots light as its
+   edge passes them. Signifies NEARNESS (kinship of meaning), never connection. All rounds. */
+.ripple { position: absolute; transform: translate(-50%, -50%); border-radius: 50%; border: 2px solid rgba(255,193,7,0.55); z-index: 4; pointer-events: none; width: 0; height: 0; opacity: 0; }
+.ripple.expand { animation: ripple-grow var(--ripple) linear forwards; }
+@keyframes ripple-grow { 0% { width: 0; height: 0; opacity: 0.75; } 70% { opacity: 0.45; } 100% { width: var(--ripple-d); height: var(--ripple-d); opacity: 0; } }
 
 /* ── DRAG CUE (wordless) ── */
 #drag-cue { position: fixed; pointer-events: none; z-index: 90; opacity: 0; transition: opacity 0.3s ease; font-family: 'JetBrains Mono', monospace; color: #FFC107; }
@@ -152,8 +153,17 @@ body {
 .hint { text-align: center; font-size: 13px; color: #777; margin-top: 16px; min-height: 20px; font-family: 'JetBrains Mono', monospace; }
 
 /* ── ROUND REVEAL PANEL (in-game, below the map) ── */
-#round-reveal { display: none; width: 100%; max-width: 460px; flex-direction: column; gap: 16px; margin-top: 20px; }
+#round-reveal { display: none; width: 100%; max-width: 580px; flex-direction: column; gap: 16px; margin-top: 20px; }
 #round-reveal.show { display: flex; }
+/* Instinct read — a per-round "how close was your guess to the right neighbourhood" badge */
+.rv-instinct { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 12px; border: 1px solid #333; border-radius: 6px; padding: 11px 14px; background: #1a1a1a; }
+.ri-tier { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; }
+.ri-score { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; }
+.ri-total { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #888; }
+.ri-note { flex-basis: 100%; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.5; color: #bbb; }
+.rv-instinct.t-high { border-color: #3a5e2a; } .t-high .ri-tier, .t-high .ri-score { color: #8fd46a; }
+.rv-instinct.t-mid  { border-color: #5a4510; } .t-mid .ri-tier,  .t-mid .ri-score  { color: #fde68a; }
+.rv-instinct.t-low  { border-color: #4a4a4a; } .t-low .ri-tier,  .t-low .ri-score  { color: #d9a98a; }
 .rv-neighbors { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
 .rv-chip { font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 4px 10px; border-radius: 3px; background: #1a1a1a; border: 1px solid #444; color: #aaa; }
 .rv-explain { display: flex; flex-direction: column; gap: 14px; }
@@ -174,15 +184,26 @@ body {
 .sentence-text b { color: #FFC107; }
 .lookup-btn { align-self: flex-start; padding: 9px 18px; min-height: 44px; background: transparent; color: #80c8e8; border: 1px solid #3a5870; font-family: 'JetBrains Mono', monospace; font-size: 13px; cursor: pointer; border-radius: 3px; touch-action: manipulation; transition: border-color 0.15s, color 0.15s; }
 .lookup-btn:hover { border-color: #80c8e8; }
-.lookup-btn:disabled { opacity: 0.5; cursor: default; }
-.lookup-readout { display: none; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #80d8a0; }
-.lookup-readout.show { display: block; }
+.lookup-btn:disabled { opacity: 0.6; cursor: default; color: #80d8a0; border-color: #2a4030; }
+
+/* Echo-map: each look-up sends a "bank" token from its EXPECTED region (water / money) to
+   the SAME centre spot — both land together in the middle, in neither region. Deliberately
+   no connecting lines: a line between words reads as wiring/attention, the misread the
+   whole reveal redesign avoids. The motion is a lookup-and-land, not a connection. */
+#echo-map { position: relative; width: 100%; max-width: 360px; aspect-ratio: 2.4 / 1; background: #161616; border: 1px solid #333; border-radius: 8px; overflow: hidden; }
+.echo-region { position: absolute; top: 30%; transform: translate(-50%, -50%); font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 1px; opacity: 0.5; }
+.echo-water { left: 16%; color: #3fb6a8; }
+.echo-money { left: 84%; color: #d8a93f; }
+.echo-center { position: absolute; left: 50%; top: 64%; transform: translate(-50%, -50%); width: 8px; height: 8px; border-radius: 50%; background: #444; }
+.echo-center.pulse { animation: pt-pulse 0.6s ease-out; }
+.echo-chip { position: absolute; transform: translate(-50%, -50%); font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: #ffe08a; background: #463408; border: 1px solid #FFC107; border-radius: 4px; padding: 2px 6px; white-space: nowrap; z-index: 2; transition: left 0.55s cubic-bezier(0.34,1.1,0.64,1), top 0.55s cubic-bezier(0.34,1.1,0.64,1); }
 #same-callout { display: none; max-width: 520px; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 15px; line-height: 1.6; color: #fde68a; font-weight: 600; background: #211c0f; border: 1px solid #5a4510; border-radius: 6px; padding: 16px; }
 #same-callout.show { display: block; }
 
 /* ── DONE SCREEN ── */
 #done { gap: 20px; padding: 40px 0; align-items: center; text-align: center; }
 .done-title { font-size: 42px; font-weight: 300; color: #FFC107; line-height: 1; }
+.done-score { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; color: #8fd46a; letter-spacing: 1px; }
 .done-body { font-size: 14px; color: #bbb; line-height: 1.85; max-width: 480px; font-family: 'JetBrains Mono', monospace; }
 .done-body strong { color: #FFC107; }
 .replay-btn { padding: 14px 48px; background: #5D8733; color: #0d1a04; border: none; font-family: 'Fraunces', serif; font-size: 17px; font-weight: 600; cursor: pointer; border-radius: 2px; touch-action: manipulation; transition: background 0.15s; }
@@ -219,8 +240,8 @@ body {
   <div class="intro-wrap">
     <div class="intro-eyebrow">City of Tokens</div>
     <div class="intro-title">The Map Room</div>
-    <p class="intro-line">Level 1 showed how a model breaks words into tokens. In Level 2, we'll see how it understands these tokens.</p>
-    <button class="intro-btn" id="begin-btn">Enter the Map Room →</button>
+    <p class="intro-line">The transformer model starts with splitting a word into tokens in the journey to figure out what the words mean. Next, it assigns these tokens to a point in the map. Your job in the 'map' is to figure out where each of the tokens go.</p>
+    <button class="intro-btn" id="begin-btn">Show me the Map →</button>
   </div>
 </div>
 
@@ -236,6 +257,12 @@ body {
   </div>
 
   <div id="round-reveal">
+    <div class="rv-instinct" id="rv-instinct">
+      <span class="ri-tier" id="ri-tier"></span>
+      <span class="ri-score" id="ri-score"></span>
+      <span class="ri-total" id="ri-total"></span>
+      <span class="ri-note" id="ri-note"></span>
+    </div>
     <div class="rv-neighbors" id="rv-neighbors"></div>
     <div class="rv-explain">
       <div class="rx-row">
@@ -247,33 +274,38 @@ body {
         <div class="rx-text" id="rv-sowhat"></div>
       </div>
     </div>
-    <button class="next-btn" id="next-btn">Next traveler →</button>
+    <button class="next-btn" id="next-btn">Next word →</button>
   </div>
 </div>
 
 <!-- ══════════════ PROBLEM SCREEN (Round 4) ══════════════ -->
 <div id="problem" class="screen">
-  <div class="problem-title">Same token. Two different meanings.</div>
+  <div class="problem-title">What happens when the same word can have different meanings?</div>
   <div class="sentence-row">
     <div class="sentence-text">"The <b>bank</b> was completely flooded."</div>
-    <button class="lookup-btn" id="lookup-0">look up “bank” →</button>
-    <div class="lookup-readout" id="readout-0"></div>
+    <button class="lookup-btn" id="lookup-0">Where does this go?</button>
   </div>
   <div class="sentence-row">
     <div class="sentence-text">"The <b>bank</b> was suddenly closed."</div>
-    <button class="lookup-btn" id="lookup-1">look up “bank” →</button>
-    <div class="lookup-readout" id="readout-1"></div>
+    <button class="lookup-btn" id="lookup-1">Where does this go?</button>
   </div>
-  <div id="same-callout">Both sentences use the same token, so the map gives them the same starting point. The surrounding words have not helped yet.</div>
+  <!-- Echo-map: each look-up flies a "bank" token from its expected region to the centre -->
+  <div id="echo-map">
+    <div class="echo-region echo-water">water</div>
+    <div class="echo-region echo-money">money</div>
+    <div class="echo-center" id="echo-center"></div>
+  </div>
+  <div id="same-callout">Both went to the same dot — even though the two sentences mean completely different things. The map can't tell them apart. So how does it figure out which "bank" is which? That's what we'll learn in the next level.</div>
   <button class="next-btn" id="problem-continue" style="display:none;">Continue →</button>
 </div>
 
 <!-- ══════════════ DONE SCREEN ══════════════ -->
 <div id="done" class="screen">
   <div class="done-title">Mapped.</div>
+  <div class="done-score" id="done-score"></div>
   <div class="done-body">
-    What you just did is called <strong>embedding</strong> — every word becomes one fixed point on a map of meaning.<br><br>
-    But “bank” proved the problem: one fixed point can't understand two meanings by itself. The next layers use context to pull the meaning apart.
+    What you just did is called <strong>embedding</strong>. Every token is 'embedded' or placed at a point in the map.<br><br>
+    However, a word's meaning can differ based on the context it is used in. This is solved for in the next level.
   </div>
   <button class="replay-btn" id="replay-btn">Play again</button>
 </div>
@@ -289,8 +321,8 @@ body {
 const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const TUNING = {
   SNAP_MS:          REDUCED ? 0 : 600,   // drop-point → true position
-  NEIGHBOR_GAP_MS:  REDUCED ? 0 : 360,   // beat after snap before neighbors light
-  HALO_MS:          REDUCED ? 0 : 850,   // polysemy halo expansion
+  NEIGHBOR_GAP_MS:  REDUCED ? 0 : 360,   // beat after snap before the ripple starts
+  RING_MS:          REDUCED ? 0 : 900,   // proximity ripple expansion (dots light as the ring passes)
   REVEAL_GAP_MS:    REDUCED ? 0 : 650,   // beat after neighbors before the panel/buttons
 };
 
@@ -300,37 +332,37 @@ const TUNING = {
 // NO cluster labels rendered (spec §3.2): the player reads the dots.
 // ─────────────────────────────────────────────────────────────────────────────
 const MAP_DOTS = [
-  // Emotions (top-left)
-  { word: 'joy',      x: 16, y: 18 },
-  { word: 'sad',      x: 24, y: 27 },
-  { word: 'anger',    x: 12, y: 30 },
-  { word: 'fear',     x: 22, y: 14 },
-  { word: 'love',     x: 30, y: 22 },
+  // Emotions (top-left) — spread so labels + a snapped badge don't overlap
+  { word: 'joy',      x: 11, y: 21 },
+  { word: 'sad',      x: 30, y: 28 },
+  { word: 'anger',    x: 12, y: 36 },
+  { word: 'fear',     x: 22, y: 9 },
+  { word: 'love',     x: 38, y: 17 },
   // Language / Tech boundary (center)
-  { word: 'word',     x: 46, y: 44 },
-  { word: 'text',     x: 52, y: 38 },
-  { word: 'sentence', x: 44, y: 53 },
-  { word: 'code',     x: 60, y: 46 },
-  { word: 'data',     x: 66, y: 40 },
-  { word: 'model',    x: 64, y: 55 },
+  { word: 'word',     x: 40, y: 52 },
+  { word: 'text',     x: 40, y: 32 },
+  { word: 'sentence', x: 47, y: 62 },
+  { word: 'code',     x: 68, y: 52 },
+  { word: 'data',     x: 68, y: 32 },
+  { word: 'model',    x: 61, y: 62 },
   // Nature (bottom-left)
-  { word: 'river',    x: 20, y: 76 },
-  { word: 'rain',     x: 28, y: 83 },
-  { word: 'stream',   x: 14, y: 85 },
-  { word: 'shore',    x: 26, y: 70 },
+  { word: 'river',    x: 16, y: 72 },
+  { word: 'rain',     x: 32, y: 80 },
+  { word: 'stream',   x: 16, y: 86 },
+  { word: 'shore',    x: 32, y: 65 },
   // Finance (bottom-right)
-  { word: 'deposit',  x: 74, y: 75 },
-  { word: 'money',    x: 82, y: 81 },
-  { word: 'invest',   x: 70, y: 83 },
-  { word: 'account',  x: 84, y: 68 },
+  { word: 'deposit',  x: 72, y: 74 },
+  { word: 'money',    x: 86, y: 80 },
+  { word: 'invest',   x: 70, y: 84 },
+  { word: 'account',  x: 84, y: 66 },
   // Fragment / prefix region (top-right) — where split-off pieces land, near no meaning
-  { word: 're',       x: 81, y: 24 },
-  { word: 'pre',      x: 74, y: 31 },
-  { word: 'ing',      x: 85, y: 15 },
+  { word: 're',       x: 84, y: 23 },
+  { word: 'pre',      x: 78, y: 29 },
+  { word: 'ing',      x: 88, y: 12 },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ROUNDS — the travelers that arrive from the Gate.
+// ROUNDS — the words that arrive from the Gate.
 //   truePosition : authored (x,y) on the 0..100 map
 //   neighbors    : real co-occurring words (must exist in MAP_DOTS)
 //   isPair       : Round 3 — two tokens from one Gate-split word
@@ -338,33 +370,33 @@ const MAP_DOTS = [
 // ─────────────────────────────────────────────────────────────────────────────
 const ROUNDS = [
   {
-    word: 'happy', truePosition: { x: 20, y: 22 },
+    word: 'happy', truePosition: { x: 23, y: 22 }, scoreCluster: 'feelings',
     neighbors: ['joy', 'love', 'fear', 'sad'],
-    whatHappened: 'happy landed deep inside one tight group of words.',
-    takeaway: 'Words used in similar ways end up near each other — meaning becomes a place.'
+    whatHappened: 'happy fell straight into the feeling-words, surrounded by its kin.',
+    takeaway: 'Words that appear in the same situations end up near each other.'
   },
   {
-    word: 'token', truePosition: { x: 55, y: 45 },
+    word: 'token', truePosition: { x: 54, y: 42 }, scoreCluster: 'language',
     neighbors: ['word', 'text', 'code', 'data'],
-    whatHappened: 'token landed on the border between everyday words and computer words.',
-    takeaway: 'A word\'s place reflects every way it gets used, not just its most obvious meaning.'
+    whatHappened: 'token landed in between technical terms (data, code) and grammar-related terms (text, word). It exists in both these contexts and is at a similar distance from them.',
+    takeaway: 'a word that is used in multiple ways in different contexts is placed similarly on the map'
   },
   {
-    word: 'un', truePosition: { x: 72, y: 18 }, isPair: true,
-    pairReference: { word: 'happy', x: 20, y: 22 },
-    connectorTo: { x: 20, y: 22 },
+    word: 'un', truePosition: { x: 78, y: 18 }, isPair: true, scoreCluster: 'fragments',
+    pairReference: { word: 'happy', x: 23, y: 22 },
+    connectorTo: { x: 23, y: 22 },
     neighbors: ['re', 'pre', 'ing'],
-    whatHappened: 'un landed far from happy — over with the bare word-fragments, near no meaning.',
-    takeaway: 'At the Gate, "unhappy" was cut into un + happy. Here they arrive as two separate travelers in two unrelated places — nothing has joined their meaning back yet.'
+    whatHappened: 'un landed far from happy — stranded with the bare prefixes, near nothing.',
+    takeaway: '"unhappy" was broken into two tokens and each one of them was placed accordingly on the map.'
   },
   {
-    word: 'bank', truePosition: { x: 50, y: 74 }, isPolysemy: true,
+    word: 'bank', truePosition: { x: 50, y: 74 }, isPolysemy: true, scoreBetween: ['water', 'money'],
     clusters: [
       { name: 'nature',  color: '#3fb6a8', neighbors: ['river', 'rain', 'stream', 'shore'] },
       { name: 'finance', color: '#d8a93f', neighbors: ['deposit', 'money', 'invest', 'account'] },
     ],
-    whatHappened: 'bank landed between the water words and the money words.',
-    takeaway: 'Before context is used, the token "bank" has one starting point. The map can\'t tell whether you mean a river bank or a money bank yet.'
+    whatHappened: 'bank got pulled in two directions - the water words on one side, the money words on the other. It landed between them.',
+    takeaway: 'similar to token, "bank" can mean multiple things depending on the context. How does an LLM infer the context of a particular word? We\'ll find out soon.'
   },
 ];
 
@@ -373,6 +405,8 @@ let roundIdx = 0;
 let currentRound = null;
 let placing = false;        // true while a snap/reveal sequence is running (locks input)
 let hasEverDropped = false; // retires the drag cue after the first drop
+let totalScore = 0;         // running map-reading instinct across the level
+let lastInstinct = null;    // {score, tier, note} for the round just placed
 const lookedUp = { 0: false, 1: false };
 
 // ── DRAG STATE ──
@@ -404,16 +438,68 @@ function escapeHtml(str) {
 function getDot(word) { return MAP_DOTS.find(d => d.word === word) || null; }
 function svgEl(tag) { return document.createElementNS('http://www.w3.org/2000/svg', tag); }
 
+// ── INSTINCT SCORING ──
+// Rewards finding the right *neighbourhood* (meaning region), never the exact pixel — the
+// dot positions are authored-for-feel, so we score by which cluster the drop is nearest to,
+// then how central within it. Bank is the twist: there's no "home" region, so we score how
+// well the player sensed it's *between* two families (most commit to one — that's the lesson).
+const CLUSTERS = {
+  feelings:  { label: 'feeling-words',         words: ['joy', 'sad', 'anger', 'fear', 'love'] },
+  language:  { label: 'language & code words', words: ['word', 'text', 'sentence', 'code', 'data', 'model'] },
+  water:     { label: 'water-words',           words: ['river', 'rain', 'stream', 'shore'] },
+  money:     { label: 'money-words',           words: ['deposit', 'money', 'invest', 'account'] },
+  fragments: { label: 'word-scraps',           words: ['re', 'pre', 'ing'] },
+};
+function centroidOf(words) {
+  const pts = words.map(getDot).filter(Boolean);
+  const x = pts.reduce((s, p) => s + p.x, 0) / pts.length;
+  const y = pts.reduce((s, p) => s + p.y, 0) / pts.length;
+  const r = Math.max.apply(null, pts.map(p => Math.hypot(p.x - x, p.y - y)));
+  return { x, y, r };
+}
+const CENTROIDS = {};
+Object.keys(CLUSTERS).forEach(k => { CENTROIDS[k] = centroidOf(CLUSTERS[k].words); });
+
+function nearestCluster(x, y) {
+  let best = null, bd = Infinity;
+  for (const k in CENTROIDS) {
+    const d = Math.hypot(x - CENTROIDS[k].x, y - CENTROIDS[k].y);
+    if (d < bd) { bd = d; best = k; }
+  }
+  return best;
+}
+function scorePlacement(round, x, y) {
+  if (round.scoreBetween) return scoreBank(round, x, y);
+  const home = CENTROIDS[round.scoreCluster];
+  const dHome = Math.hypot(x - home.x, y - home.y);
+  if (nearestCluster(x, y) === round.scoreCluster) {
+    if (dHome <= home.r * 0.6) return { score: 10, tier: 'Spot on', note: 'dead centre of the ' + CLUSTERS[round.scoreCluster].label + '. Sharp.' };
+    if (dHome <= home.r)       return { score: 8,  tier: 'Sharp',   note: 'right in the ' + CLUSTERS[round.scoreCluster].label + ' neighbourhood.' };
+    return { score: 5, tier: 'Warm', note: 'close — just outside the ' + CLUSTERS[round.scoreCluster].label + '.' };
+  }
+  return { score: 2, tier: 'Off', note: 'you put it near the ' + CLUSTERS[nearestCluster(x, y)].label + ' — but it lives with the ' + CLUSTERS[round.scoreCluster].label + '.' };
+}
+function scoreBank(round, x, y) {
+  const a = CENTROIDS[round.scoreBetween[0]], b = CENTROIDS[round.scoreBetween[1]];
+  const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  const half = Math.hypot(a.x - b.x, a.y - b.y) / 2;
+  const dMid = Math.hypot(x - mid.x, y - mid.y);
+  if (dMid <= half * 0.4)  return { score: 10, tier: 'Sharp', note: 'you sensed it — "bank" belongs to neither side. It\'s stranded in the middle.' };
+  if (dMid <= half * 0.75) return { score: 6,  tier: 'Warm',  note: 'you felt the tension — it gets pulled both ways.' };
+  const lean = Math.hypot(x - a.x, y - a.y) < Math.hypot(x - b.x, y - b.y) ? 'water' : 'money';
+  return { score: 2, tier: 'Off', note: 'you put "bank" with the ' + lean + ' words — most people do. But the map can\'t choose: it ends up between both.' };
+}
+
 // ── ROUND INIT ──
 function loadRound(idx) {
   roundIdx = idx;
   currentRound = ROUNDS[idx];
   placing = false;
 
-  // Clear map overlays (lines, placed tokens, halos) but keep the dots.
+  // Clear map overlays (connector lines, placed tokens, ripples) but keep the dots.
   const svg = document.getElementById('map-svg');
   svg.innerHTML = '';
-  document.querySelectorAll('.placed-token, .halo').forEach(el => el.remove());
+  document.querySelectorAll('.placed-token, .ripple').forEach(el => el.remove());
   document.querySelectorAll('.map-dot.lit').forEach(el => {
     el.classList.remove('lit');
     el.querySelector('.dot').style.background = '';
@@ -430,8 +516,8 @@ function loadRound(idx) {
   card.style.position = '';
   card.style.left = card.style.top = card.style.width = card.style.margin = '';
 
-  document.getElementById('word-label').textContent = 'Traveler ' + (idx + 1) + ' of ' + ROUNDS.length;
-  setHint('Drag the word onto the map where you think it belongs.');
+  document.getElementById('word-label').textContent = 'Word ' + (idx + 1) + ' of ' + ROUNDS.length;
+  setHint('Drag the word onto the map. Put it where you feel it belongs.');
 
   // Show the wordless cue until the first successful drop this session.
   setTimeout(maybeShowDragCue, 120);
@@ -540,6 +626,10 @@ function onTokenDropped(xPct, yPct) {
   hasEverDropped = true;
   hideDragCue();
 
+  // Score the drop by neighbourhood instinct (before the snap moves the token to truth).
+  lastInstinct = scorePlacement(currentRound, xPct, yPct);
+  totalScore += lastInstinct.score;
+
   // Hide the dragged card; spawn a placed token at the drop point.
   const card = document.getElementById('token-card');
   card.classList.add('spent');
@@ -577,39 +667,66 @@ function afterSnap() {
   } else {
     drawNeighbors(round.neighbors, '#FFC107');
   }
-  setTimeout(afterNeighbors, TUNING.REVEAL_GAP_MS + (round.isPolysemy ? TUNING.HALO_MS : 0));
+  setTimeout(afterNeighbors, TUNING.RING_MS + TUNING.REVEAL_GAP_MS);
 }
 
 function afterNeighbors() {
-  if (currentRound.isPolysemy) {
-    showScreen('problem');   // Round 4: the two-sentence payoff instead of the panel
-  } else {
-    showRoundReveal(currentRound);
+  // Every round (bank included) gets the in-game reveal panel with the map visible.
+  // Bank's "Continue →" then routes to the two-sentence problem screen (see nextRound).
+  showRoundReveal(currentRound);
+}
+
+// ── PROXIMITY RIPPLE ──
+// A ring expands from the placed dot; each listed neighbour lights the moment the ring's
+// edge reaches it (closest first). Signifies "within my neighbourhood = my kin" — never
+// connection. Only listed neighbours light; a non-neighbour the ring sweeps over stays dim
+// (critical for bank, whose nearest dots — sentence/model — are NOT its kin).
+function neighborItems(words, from) {
+  return words.map(w => {
+    const dot = getDot(w);
+    return dot ? { w, dist: Math.hypot(dot.x - from.x, dot.y - from.y) } : null;
+  }).filter(Boolean);
+}
+
+function lightDot(word, color) {
+  const dotEl = document.querySelector('.map-dot[data-word="' + word + '"]');
+  if (!dotEl) return;
+  dotEl.classList.add('lit');
+  if (color !== '#FFC107') {
+    dotEl.querySelector('.dot').style.background = color;
+    dotEl.querySelector('.lbl').style.color = color;
   }
 }
 
-// ── NEIGHBOR LINES ──
-function drawNeighbors(words, color) {
-  const svg = document.getElementById('map-svg');
-  const from = currentRound.truePosition;
-  words.forEach(w => {
-    const dot = getDot(w);
-    if (!dot) return;
-    const line = svgEl('line');
-    line.setAttribute('x1', from.x); line.setAttribute('y1', from.y);
-    line.setAttribute('x2', dot.x);  line.setAttribute('y2', dot.y);
-    line.setAttribute('stroke', color);
-    line.setAttribute('stroke-width', '1');
-    line.setAttribute('stroke-linecap', 'round');
-    line.setAttribute('opacity', '0.5');
-    line.setAttribute('vector-effect', 'non-scaling-stroke');
-    svg.appendChild(line);
-    const dotEl = document.querySelector('.map-dot[data-word="' + w + '"]');
-    if (dotEl) {
-      dotEl.classList.add('lit');
-      if (color !== '#FFC107') { dotEl.querySelector('.dot').style.background = color; dotEl.querySelector('.lbl').style.color = color; }
-    }
+function spawnRipple(from, maxDist, color) {
+  const ring = document.createElement('div');
+  ring.className = 'ripple';
+  ring.style.left = from.x + '%';
+  ring.style.top = from.y + '%';
+  ring.style.borderColor = color === '#FFC107' ? 'rgba(255,193,7,0.55)' : color;
+  ring.style.setProperty('--ripple', TUNING.RING_MS + 'ms');
+  // A neighbour at coord-distance d sits at radius d% of the (square) map, so the ring's
+  // edge reaches it when the diameter = 2*d%. Linear growth keeps edge-arrival and the
+  // dot-lighting schedule (revealKin) in sync. Tiny overshoot so the farthest kin lights
+  // a hair before the ring fades.
+  ring.style.setProperty('--ripple-d', (2 * maxDist + 4) + '%');
+  document.getElementById('map').appendChild(ring);
+  requestAnimationFrame(() => ring.classList.add('expand'));
+}
+
+function revealKin(items, maxDist, color) {
+  items.forEach(it => {
+    const delay = REDUCED ? 0 : (it.dist / maxDist) * TUNING.RING_MS;
+    setTimeout(() => lightDot(it.w, color), delay);
   });
+}
+
+function drawNeighbors(words, color) {
+  const from = currentRound.truePosition;
+  const items = neighborItems(words, from);
+  const maxDist = items.reduce((m, it) => Math.max(m, it.dist), 0) || 1;
+  spawnRipple(from, maxDist, color);
+  revealKin(items, maxDist, color);
 }
 
 // Round 3: place "happy" reference + dashed connector to "un".
@@ -634,27 +751,33 @@ function placeReference(round) {
   svg.appendChild(line);
 }
 
-// Round 4: two colored neighbor sets + two expanding halos.
+// Round 4: ONE ripple from the stranded point; it lights BOTH families' dots as it
+// passes (teal nature + amber finance live on the dots/chips, not the ring). The single
+// ring reaching two distant families is the "belongs to neither" picture.
 function drawPolysemy(round) {
-  const map = document.getElementById('map');
-  round.clusters.forEach(c => {
-    drawNeighbors(c.neighbors, c.color);
-    const halo = document.createElement('div');
-    halo.className = 'halo';
-    halo.style.left = round.truePosition.x + '%';
-    halo.style.top = round.truePosition.y + '%';
-    halo.style.background = 'radial-gradient(circle, ' + c.color + '88, transparent 70%)';
-    halo.style.setProperty('--halo', TUNING.HALO_MS + 'ms');
-    map.appendChild(halo);
-    requestAnimationFrame(() => halo.classList.add('expand'));
-  });
+  const from = round.truePosition;
+  const all = round.clusters.flatMap(c => neighborItems(c.neighbors, from));
+  const maxDist = all.reduce((m, it) => Math.max(m, it.dist), 0) || 1;
+  spawnRipple(from, maxDist, '#FFC107');
+  round.clusters.forEach(c => revealKin(neighborItems(c.neighbors, from), maxDist, c.color));
 }
 
 // ── ROUND REVEAL PANEL (in-game) ──
 function showRoundReveal(round) {
+  // Instinct badge: how close the player's guess was to the right neighbourhood.
+  const ins = lastInstinct || { score: 0, tier: '', note: '' };
+  const tierClass = ins.score >= 8 ? 't-high' : ins.score >= 5 ? 't-mid' : 't-low';
+  document.getElementById('rv-instinct').className = 'rv-instinct ' + tierClass;
+  document.getElementById('ri-tier').textContent = ins.tier;
+  document.getElementById('ri-score').textContent = ins.score + '/10';
+  document.getElementById('ri-total').textContent = 'instinct: ' + totalScore + '/' + (ROUNDS.length * 10);
+  document.getElementById('ri-note').textContent = ins.note;
+
   const chips = document.getElementById('rv-neighbors');
   chips.innerHTML = '';
-  round.neighbors.forEach(n => {
+  // Bank has no single neighbour list — it has two clusters; show both families' words.
+  const neighborWords = round.neighbors || round.clusters.flatMap(c => c.neighbors);
+  neighborWords.forEach(n => {
     const c = document.createElement('div');
     c.className = 'rv-chip';
     c.textContent = n;
@@ -662,13 +785,15 @@ function showRoundReveal(round) {
   });
   document.getElementById('rv-what').textContent = round.whatHappened;
   document.getElementById('rv-sowhat').textContent = round.takeaway;
-  document.getElementById('next-btn').textContent = 'Next traveler →';
+  document.getElementById('next-btn').textContent = round.isPolysemy ? 'Continue →' : 'Next word →';
   document.getElementById('round-reveal').classList.add('show');
 }
 
 function nextRound() {
   document.getElementById('round-reveal').classList.remove('show');
-  if (roundIdx >= ROUNDS.length - 1) {
+  if (currentRound.isPolysemy) {
+    showScreen('problem');   // bank: hand off to the two-sentence payoff
+  } else if (roundIdx >= ROUNDS.length - 1) {
     showScreen('done');
   } else {
     loadRound(roundIdx + 1);
@@ -676,37 +801,60 @@ function nextRound() {
 }
 
 // ── PROBLEM SCREEN (Round 4 payoff) ──
+// Each "look up bank" flies a tinted "bank" token from its EXPECTED region (water / money)
+// to the SAME centre spot — both land together, in neither region. The lookup-and-land
+// gesture shows "same word → same dot" without any connecting line (which would read as
+// wiring). Gated: the callout only appears once both are looked up (the player connects it).
+const ECHO_START = [{ left: '16%', top: '30%' }, { left: '84%', top: '30%' }];
+const ECHO_END   = [{ left: '43%', top: '64%' }, { left: '57%', top: '64%' }];  // touch side-by-side at centre: two tokens, one spot
+const ECHO_TINT  = ['#3fb6a8', '#d8a93f'];
 function setupProblem() {
-  const round = ROUNDS[ROUNDS.length - 1];
-  const rex = round.truePosition.x.toFixed(0), rey = round.truePosition.y.toFixed(0);
-  const readoutText = 'same token: bank · same starting point (' + rex + ', ' + rey + ') · mixed neighbors: ' + round.clusters.flatMap(c => c.neighbors).join(', ');
   [0, 1].forEach(i => {
     document.getElementById('lookup-' + i).addEventListener('click', () => {
       lookedUp[i] = true;
-      const ro = document.getElementById('readout-' + i);
-      ro.textContent = readoutText;
-      ro.classList.add('show');
-      document.getElementById('lookup-' + i).disabled = true;
+      const chip = document.createElement('div');
+      chip.className = 'echo-chip';
+      chip.id = 'echo-chip-' + i;
+      chip.textContent = 'bank';
+      chip.style.borderColor = ECHO_TINT[i];
+      chip.style.left = ECHO_START[i].left;
+      chip.style.top = ECHO_START[i].top;
+      document.getElementById('echo-map').appendChild(chip);
+      requestAnimationFrame(() => { chip.style.left = ECHO_END[i].left; chip.style.top = ECHO_END[i].top; });
+      const btn = document.getElementById('lookup-' + i);
+      btn.disabled = true;
+      btn.textContent = 'same dot —';
       if (lookedUp[0] && lookedUp[1]) {
-        document.getElementById('same-callout').classList.add('show');
-        document.getElementById('problem-continue').style.display = 'block';
+        const reveal = () => {
+          document.getElementById('echo-center').classList.add('pulse');
+          document.getElementById('same-callout').classList.add('show');
+          document.getElementById('problem-continue').style.display = 'block';
+        };
+        if (REDUCED) reveal(); else setTimeout(reveal, 520);  // let the second token land first
       }
     });
   });
-  document.getElementById('problem-continue').addEventListener('click', () => showScreen('done'));
+  document.getElementById('problem-continue').addEventListener('click', () => {
+    document.getElementById('done-score').textContent = 'Instinct score: ' + totalScore + ' / ' + (ROUNDS.length * 10);
+    showScreen('done');
+  });
 }
 
 // ── WIRE BUTTONS (no inline handlers — coding standards) ──
 document.getElementById('begin-btn').addEventListener('click', () => { showScreen('game'); loadRound(0); });
 document.getElementById('next-btn').addEventListener('click', nextRound);
 document.getElementById('replay-btn').addEventListener('click', () => {
+  totalScore = 0;
+  lastInstinct = null;
   lookedUp[0] = lookedUp[1] = false;
   document.getElementById('same-callout').classList.remove('show');
   document.getElementById('problem-continue').style.display = 'none';
+  document.getElementById('echo-center').classList.remove('pulse');
+  document.querySelectorAll('.echo-chip').forEach(c => c.remove());
   [0, 1].forEach(i => {
-    const r = document.getElementById('readout-' + i);
-    r.classList.remove('show'); r.textContent = '';
-    document.getElementById('lookup-' + i).disabled = false;
+    const btn = document.getElementById('lookup-' + i);
+    btn.disabled = false;
+    btn.textContent = 'Where does this go?';
   });
   showScreen('game');
   loadRound(0);
