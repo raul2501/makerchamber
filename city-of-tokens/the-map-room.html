@@ -76,6 +76,8 @@ body {
   transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 #token-card.dragging { cursor: grabbing; transform: scale(1.08); box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+/* Touch/pen: shrink and lift the label above the finger so the drop point and nearby dots stay visible. */
+#token-card.dragging.drag-touch { transform: translateY(-64px) scale(0.55); }
 #token-card.spent { visibility: hidden; }
 
 /* ── THE MAP ── */
@@ -512,9 +514,11 @@ function loadRound(idx) {
 
   const card = document.getElementById('token-card');
   card.textContent = currentRound.word;
-  card.classList.remove('spent', 'dragging');
+  card.classList.remove('spent', 'dragging', 'drag-touch');
   card.style.position = '';
   card.style.left = card.style.top = card.style.width = card.style.margin = '';
+  const leftoverSpacer = document.getElementById('card-spacer');
+  if (leftoverSpacer) leftoverSpacer.remove();
 
   document.getElementById('word-label').textContent = 'Word ' + (idx + 1) + ' of ' + ROUNDS.length;
   setHint('Drag the word onto the map. Put it where you feel it belongs.');
@@ -581,6 +585,13 @@ function onPointerDown(e) {
   const rect = card.getBoundingClientRect();
   grabDX = e.clientX - rect.left;
   grabDY = e.clientY - rect.top;
+  // Reserve the card's layout space so taking it out of flow (position:fixed) doesn't jolt the map up.
+  const mb = parseFloat(getComputedStyle(card).marginBottom) || 0;
+  const spacer = document.createElement('div');
+  spacer.id = 'card-spacer';
+  spacer.style.flex = '0 0 auto';
+  spacer.style.height = (rect.height + mb) + 'px';
+  card.parentNode.insertBefore(spacer, card);
   // Fix the card in place so it follows the pointer without reflowing the layout.
   card.style.width = rect.width + 'px';
   card.style.position = 'fixed';
@@ -588,6 +599,7 @@ function onPointerDown(e) {
   card.style.top = rect.top + 'px';
   card.style.margin = '0';
   card.classList.add('dragging');
+  if (e.pointerType !== 'mouse') card.classList.add('drag-touch');
 }
 
 function onPointerMove(e) {
@@ -603,8 +615,13 @@ function onPointerUp(e) {
   e.preventDefault();
   dragActive = false;
   activePointerId = null;
-  document.getElementById('token-card').classList.remove('dragging');
-  const drop = getMapPct(e.clientX, e.clientY);
+  const card = document.getElementById('token-card');
+  // Score where the WORD is shown (its rendered centre), not the raw finger point — the
+  // touch drag shrinks and lifts the label above the thumb, so the finger sits below it.
+  // Read the rect BEFORE clearing the drag classes, while the transform is still applied.
+  const r = card.getBoundingClientRect();
+  const drop = getMapPct(r.left + r.width / 2, r.top + r.height / 2);
+  card.classList.remove('dragging', 'drag-touch');
   debugLog('drop @ ' + Math.round(drop.x) + ',' + Math.round(drop.y) + '% — round ' + (roundIdx + 1));
   onTokenDropped(drop.x, drop.y);
 }
@@ -614,9 +631,11 @@ function onPointerCancel(e) {
   dragActive = false;
   activePointerId = null;
   const card = document.getElementById('token-card');
-  card.classList.remove('dragging');
+  card.classList.remove('dragging', 'drag-touch');
   card.style.position = '';
   card.style.left = card.style.top = card.style.width = card.style.margin = '';
+  const cancelledSpacer = document.getElementById('card-spacer');
+  if (cancelledSpacer) cancelledSpacer.remove();
 }
 
 // ── PLACE + SNAP ──
@@ -633,8 +652,12 @@ function onTokenDropped(xPct, yPct) {
   // Hide the dragged card; spawn a placed token at the drop point.
   const card = document.getElementById('token-card');
   card.classList.add('spent');
+  card.classList.remove('drag-touch');
   card.style.position = '';
   card.style.left = card.style.top = card.style.width = card.style.margin = '';
+  // Card is back in flow (hidden, but still occupies its slot) — drop the spacer in the same frame so the map holds steady.
+  const droppedSpacer = document.getElementById('card-spacer');
+  if (droppedSpacer) droppedSpacer.remove();
 
   const map = document.getElementById('map');
   const token = document.createElement('div');
