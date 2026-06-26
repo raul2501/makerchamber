@@ -10,9 +10,10 @@ A studio that builds browser-based games teaching concepts across any domain
 Over time, patterns from these games will inform a generalized learning-game engine.
 The games being built now are both products AND research data for that engine.
 
-## Games in Development
+## Games/Projects in Development
 
 - **City of Tokens** (`city-of-tokens/`) — 8 levels teaching transformer architecture through "The City of Tokens" world
+- **loopworm** (`loopworm/`) - an experimental project to explore whether the makerchamber mechanics apply to specific business contexts and situations. 
 
 ## Technology Stack
 
@@ -49,6 +50,19 @@ Every task follows: **Question → Options → Decision → Draft → Approval**
 - No commits without user instruction
 
 > **First session?** Run `/start` to begin the guided onboarding flow.
+
+## AI agent instructions
+
+- Use this file, `README.md`, and the linked docs as the primary source of truth.
+- This repo is browser-native: vanilla HTML, CSS, and JavaScript only. There is no framework, no bundler, no build step.
+- Current product work lives in `city-of-tokens/`. Game logic is implemented directly in HTML files with inline JS and CSS.
+- Persistence is handled through `localStorage` per game. Avoid guesses about backend systems or build tooling.
+- Local preview is the standard workflow. A safe dev server is `python3 -m http.server 8771` from the repo root, then open `http://localhost:8771/city-of-tokens/...`.
+- Hosting is Vercel with auto-deploy on push to `main`. Always verify locally before any public push.
+- Follow the project collaboration protocol strictly: Question → Options → Decision → Draft → Approval.
+- Ask permission before changing files: “May I write this to [filepath]?”
+- Keep edits minimal, explicit, and reversible. Prefer small, focused changes over broad refactors.
+- This guidance is model-agnostic. Do not assume a specific AI toolchain or built-in feature set; treat the workspace as a plain codebase.
 
 ## Coding Standards
 
