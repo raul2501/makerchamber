@@ -431,6 +431,10 @@ function showScreen(id) {
   document.getElementById(id).classList.add('active');
   window.scrollTo(0, 0);
   hideDragCue();
+  // Signal completion to the overworld when embedded in the iframe overlay (no-op standalone).
+  if (id === 'done' && window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: 'cot-level-complete', id: 'the-map-room' }, location.origin);
+  }
 }
 
 // ── UTIL ──
