@@ -14,3 +14,6 @@ docs/feedback/
 # Local secrets
 .env.local
 .env.*.local
+
+# Rejected throwaway prototype (kept locally, never pushed)
+city-of-tokens/the-census-bureau-proto.html
